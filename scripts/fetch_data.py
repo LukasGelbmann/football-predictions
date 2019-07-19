@@ -29,7 +29,7 @@ def store_all_as_csv(source):
               f"in {region}")
         total_seasons += num_seasons
     print(f"Done storing {total_seasons} "
-          f"season{'s' if total_seasons != 1 else ''}")
+          f"season{'s' if total_seasons != 1 else ''} from {source.name}")
     print()
 
 
@@ -37,9 +37,8 @@ def store_as_csv(region, competition, season, source):
     """Load a season's results and store them in a CSV file."""
 
     source_dir = paths.DATA_DIR / source.name
-    file_dir = source_dir / region
     path = paths.season_csv_path(region, competition, season, source_dir)
-
+    file_dir = path.parent
     try:
         file_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -59,13 +58,12 @@ def store_as_csv(region, competition, season, source):
 
 
 def consolidate(sources):
-    """Consolidate and store all seasons from the three-point era."""
+    """Consolidate and store all seasons from the three-points era."""
 
     regions = set()
     sources_by_region = collections.defaultdict(list)
     for source in sources:
         source_dir = paths.DATA_DIR / source.name
-
         try:
             subdirs = paths.subdirs(source_dir)
         except OSError as e:
@@ -86,7 +84,6 @@ def consolidate(sources):
           f"region{'s' if num_regions != 1 else ''}")
 
 
-
 def consolidate_region(region, sources):
     """Consolidate and store a region's seasons from the three-point era."""
 
@@ -97,7 +94,6 @@ def consolidate_region(region, sources):
         # Lazy implementation for now.
 
         source_dir = paths.DATA_DIR / source.name / region
-
         try:
             csv_paths = paths.csv_files(source_dir)
         except OSError as e:
@@ -105,7 +101,7 @@ def consolidate_region(region, sources):
             return
 
         for source_path in csv_paths:
-            season_start = paths.start_year(source_path)
+            season_start = paths.extract_start_year(source_path)
             if season_start < football.THREE_POINTS_ERA[region]:
                 continue
 

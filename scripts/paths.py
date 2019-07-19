@@ -31,16 +31,16 @@ def season_csv_path(region, competition, season, source_dir=CONSOLIDATED_DIR):
     return source_dir / region / filename
 
 
-def competition(path):
+def extract_competition(path):
     """Return the competition, given a file path."""
     return path.stem.split('_')[0]
 
 
-def season(path):
+def extract_season(path):
     """Return the season, given a file path."""
     return path.stem.split('_')[1]
 
 
-def start_year(path):
+def extract_start_year(path):
     """Return the season's start year, given a file path."""
-    return int(season(path)[:4])
+    return int(extract_season(path)[:4])
