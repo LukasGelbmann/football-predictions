@@ -1,10 +1,11 @@
-"""Data sources for football results."""
+"""Resources for fetching football match data."""
 
 
 import csv
 import datetime
+import sys
 
-from match import Match
+import football
 import paths
 
 
@@ -15,8 +16,8 @@ class Source:
         """Initialize the source."""
         self.name = name
         self.regions = None
-        self.get_competitions = None
-        self.get_seasons = None
+        self.competitions = None
+        self.seasons = None
         self.fetch_season = None
 
 
@@ -25,25 +26,25 @@ def _get_football_data_local():
 
     competitions = {
         'belgium': {
-            'pro-league': 'B1',
+            '1st-league': 'B1',
         },
         'england': {
             'premier': 'E0',
-            'championship': 'E1',
-            'league-1': 'E2',
-            'league-2': 'E3',
-            'national': 'EC',
+            '2nd-league': 'E1',
+            '3rd-league': 'E2',
+            '4th-league': 'E3',
+            '5th-league': 'EC',
         },
         'france': {
-            'ligue-1': 'F1',
-            'ligue-2': 'F2',
+            '1st-league': 'F1',
+            '2nd-league': 'F2',
         },
         'germany': {
             'bundesliga': 'D1',
             'zweite': 'D2',
         },
         'greece': {
-            'super-league': 'G1',
+            '1st-league': 'G1',
         },
         'italy': {
             'serie-a': 'I1',
@@ -53,20 +54,20 @@ def _get_football_data_local():
             'eredivisie': 'N1',
         },
         'portugal': {
-            'primeira': 'P1',
+            '1st-league': 'P1',
         },
         'scotland': {
-            'premiership': 'SC0',
-            'championship': 'SC1',
-            'league-1': 'SC2',
-            'league-2': 'SC3',
+            '1st-league': 'SC0',
+            '2nd-league': 'SC1',
+            '3rd-league': 'SC2',
+            '4th-league': 'SC3',
         },
         'spain': {
             'primera': 'SP1',
             'segunda': 'SP2',
         },
         'turkey': {
-            'super-lig': 'T1',
+            '1st-league': 'T1',
         },
     }
 
@@ -77,6 +78,10 @@ def _get_football_data_local():
         season_folders[f'{start}-{end:02}'] = f'{start % 100 :02}{end:02}'
 
     football_data_dir = paths.DATA_DIR / 'football-data-raw'
+
+    def get_regions():
+        """Return an iterable of regions."""
+        return list(competitions)
 
     def get_competitions(region):
         """Return an iterable of competitions for a region."""
@@ -129,19 +134,20 @@ def _get_football_data_local():
                         break
 
                 if date is None:
-                    raise ValueError(f"Unparsable date: {date_str}")
+                    raise ValueError(f"Couldn't parse date: {date_str}")
 
                 kwargs['date'] = date
                 kwargs['home'] = fields.get('HomeTeam') or fields['HT']
                 kwargs['away'] = fields.get('AwayTeam') or fields['AT']
                 for target_name, source_name in get_int_fields(region).items():
-                    if source_name in fields and fields[source_name]:
-                        kwargs[target_name] = int(fields[source_name])
+                    value = fields.get(source_name)
+                    if value:
+                        kwargs[target_name] = int(value)
 
                 if 'home_goals' not in kwargs or 'away_goals' not in kwargs:
                     continue
 
-                yield Match(**kwargs)
+                yield football.Match(**kwargs)
 
     def get_path(region, competition, season):
         """Return the path where the raw data of a season is stored."""
@@ -188,11 +194,13 @@ def _get_football_data_local():
         return fields
 
     source = Source('football-data')
-    source.regions = list(competitions)
-    source.get_competitions = get_competitions
-    source.get_seasons = get_seasons
+    source.regions = get_regions
+    source.competitions = get_competitions
+    source.seasons = get_seasons
     source.fetch_season = fetch_season
     return source
 
 
 football_data_local = _get_football_data_local()
+
+sources = [football_data_local]
