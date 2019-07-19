@@ -5,6 +5,21 @@ import datetime
 import typing
 
 
+THREE_POINTS_ERA = {
+    'belgium': 1995,     # Second division was 1993, but we don't have it yet.
+    'england': 1981,
+    'france': 1994,      # Also in 1988-89.
+    'germany': 1995,
+    'greece': 1992,
+    'italy': 1994,       # Serie A and Serie B.
+    'netherlands': 1995,
+    'portugal': 1995,
+    'scotland': 1994,    # Earlier for non-professional leagues.
+    'spain': 1995,
+    'turkey': 1987,
+}
+
+
 class Match(typing.NamedTuple):
     """A football match."""
 
