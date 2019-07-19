@@ -25,7 +25,6 @@ def competitions(region):
     """Return an iterable of competitions for a region."""
 
     region_dir = paths.CONSOLIDATED_DIR / region
-
     try:
         csv_paths = paths.csv_files(region_dir)
     except OSError as e:
@@ -37,14 +36,14 @@ def competitions(region):
             return '1st league'
         return competition
 
-    return sorted(set(paths.competition(path) for path in csv_paths), key=key)
+    result = set(paths.extract_competition(path) for path in csv_paths)
+    return sorted(result, key=key)
 
 
 def seasons(region, competition):
     """Return an iterable of seasons for a competition."""
 
     region_dir = paths.CONSOLIDATED_DIR / region
-
     try:
         csv_paths = paths.csv_files(region_dir)
     except OSError as e:
@@ -53,8 +52,8 @@ def seasons(region, competition):
 
     result = []
     for path in csv_paths:
-        if paths.competition(path) == competition:
-            result.append(paths.season(path))
+        if paths.extract_competition(path) == competition:
+            result.append(paths.extract_season(path))
     return sorted(result)
 
 
@@ -68,7 +67,6 @@ def season_matches(region, competition, season):
     """Yield all matches of a season."""
 
     path = paths.season_csv_path(region, competition, season)
-
     try:
         file = open(path, encoding='utf-8', newline='')
     except OSError as e:

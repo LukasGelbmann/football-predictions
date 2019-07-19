@@ -12,6 +12,9 @@ import data
 import football
 
 
+UPPERCASE_REGIONS = {'USA'}
+
+
 def print_region_stats(region, matches_by_competition):
     """Print statistics for a region."""
 
@@ -47,18 +50,19 @@ def print_stats(title, matches, level=1):
         if not valid:
             continue
         mean = statistics.mean(valid)
-        print(f'{name}: mean={mean:.3}', end='')
-        if len(valid) <= 1:
-            print()
-            continue
-        stdev = statistics.stdev(valid)
-        print(f', st.dev.={stdev:.3}')
+        print(f'{name} (count={len(valid)}): mean={mean:.3}', end='')
+        if len(valid) > 1:
+            stdev = statistics.stdev(valid)
+            print(f', st.dev.={stdev:.3}', end='')
+        print()
 
     print()
 
 
 def print_title(title, level=1):
     """Print a title."""
+    if title.upper() in UPPERCASE_REGIONS:
+        title = title.upper()
     marker = '#' * level
     print(marker, title, marker)
 
