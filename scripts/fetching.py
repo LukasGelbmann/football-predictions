@@ -2,9 +2,9 @@
 
 
 import csv
-import datetime
 import sys
 
+import datetools
 import football
 import paths
 
@@ -126,11 +126,10 @@ def _get_football_data_local():
                 date = None
                 for format_str in '%d/%m/%y', '%d/%m/%Y':
                     try:
-                        time = datetime.datetime.strptime(date_str, format_str)
+                        date = datetools.parse_date(date_str, format_str)
                     except ValueError:
                         pass
                     else:
-                        date = time.date()
                         break
 
                 if date is None:
@@ -183,12 +182,12 @@ def _get_football_data_local():
         if region in ('england', 'scotland'):
             fields.update({
                 'home_yellow_no_red': 'HY',
-                'away_yellow_no_red': 'HY',
+                'away_yellow_no_red': 'AY',
             })
         else:
             fields.update({
                 'home_yellow': 'HY',
-                'away_yellow': 'HY',
+                'away_yellow': 'AY',
             })
 
         return fields
