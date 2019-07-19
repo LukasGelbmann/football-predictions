@@ -36,8 +36,9 @@ def store_all_as_csv(source):
 def store_as_csv(region, competition, season, source):
     """Load a season's results and store them in a CSV file."""
 
-    file_dir = paths.DATA_DIR / source.name / region
-    path = file_dir / f'{competition}_{season}.csv'
+    source_dir = paths.DATA_DIR / source.name
+    file_dir = source_dir / region
+    path = paths.season_csv_path(region, competition, season, source_dir)
 
     try:
         file_dir.mkdir(parents=True, exist_ok=True)
@@ -66,22 +67,12 @@ def consolidate(sources):
         source_dir = paths.DATA_DIR / source.name
 
         try:
-            contents = source_dir.iterdir()
+            subdirs = paths.subdirs(source_dir)
         except OSError as e:
-            print("Couldn't list directory contents:", e, file=sys.stderr)
+            print("Couldn't list subdirectories:", e, file=sys.stderr)
             return
 
-        new_regions = set()
-        for path in contents:
-            try:
-                is_dir = path.is_dir()
-            except OSError as e:
-                print("Couldn't check is_dir():", e, file=sys.stderr)
-                return
-
-            if is_dir:
-                new_regions.add(path.name)
-
+        new_regions = set(subdir.name for subdir in subdirs)
         regions.update(new_regions)
         for region in new_regions:
             sources_by_region[region].append(source)
@@ -108,24 +99,14 @@ def consolidate_region(region, sources):
         source_dir = paths.DATA_DIR / source.name / region
 
         try:
-            csv_contents = source_dir.glob('*.csv')
+            csv_paths = paths.csv_files(source_dir)
         except OSError as e:
-            print("Couldn't list directory's CSV files:", e, file=sys.stderr)
+            print("Couldn't list CSV files:", e, file=sys.stderr)
             return
 
-        for source_path in csv_contents:
-            try:
-                is_file = source_path.is_file()
-            except OSError as e:
-                print("Couldn't check is_file():", e, file=sys.stderr)
-                return
-
-            if not is_file:
-                continue
-
-            parts = source_path.stem.split('_')
-            start = int(parts[-1][:4])
-            if start < football.THREE_POINTS_ERA[region]:
+        for source_path in csv_paths:
+            season_start = paths.start_year(source_path)
+            if season_start < football.THREE_POINTS_ERA[region]:
                 continue
 
             try:
