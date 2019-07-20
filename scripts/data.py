@@ -2,6 +2,7 @@
 
 
 import csv
+import operator
 import sys
 
 import datetools
@@ -55,6 +56,27 @@ def seasons(region, competition):
         if paths.extract_competition(path) == competition:
             result.append(paths.extract_season(path))
     return sorted(result)
+
+
+def all_records():
+    """Return all records in chronological order."""
+    result = []
+    for region in regions():
+        for competition in competitions(region):
+            result.extend(competition_records(region, competition))
+    return sorted(result, key=operator.attrgetter('date'))
+
+
+def competition_records(region, competition):
+    """Yield all records of a competition."""
+    for season in seasons(region, competition):
+        yield from season_records(region, competition, season)
+
+
+def season_records(region, competition, season):
+    """Yield all records of a season."""
+    for match in season_matches(region, competition, season):
+        yield football.MatchRecord(match, region, competition, season)
 
 
 def competition_matches(region, competition):
