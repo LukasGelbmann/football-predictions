@@ -34,8 +34,6 @@ def print_stats(title, matches, level=1):
 
     print_title(title, level)
 
-    print("Number of matches:", len(matches))
-
     teams = set()
     for match in matches:
         teams.add(match.home)
@@ -43,13 +41,13 @@ def print_stats(title, matches, level=1):
     print("Number of teams:", len(teams))
 
     for name, field_type in football.Match._field_types.items():
-        if not issubclass(field_type, int):
+        if not issubclass(field_type, int) or issubclass(field_type, bool):
             continue
         values = (getattr(match, name) for match in matches)
         valid = [value for value in values if value is not None]
         if not valid:
             continue
-        mean = statistics.mean(valid)
+        mean = float(statistics.mean(valid))
         print(f'{name} (count={len(valid)}): mean={mean:.3}', end='')
         if len(valid) > 1:
             stdev = statistics.stdev(valid)

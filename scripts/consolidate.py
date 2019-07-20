@@ -10,7 +10,8 @@ import collections
 import shutil
 import sys
 
-import fetching
+import datetools
+import storing
 import football
 import paths
 
@@ -53,8 +54,18 @@ def store_as_csv(region, competition, season, source):
 
     with file:
         writer = csv.writer(file, lineterminator='\n')
-        matches = source.fetch_season(region, competition, season)
-        writer.writerows(matches)
+        for match in source.fetch_season(region, competition, season):
+            writer.writerow(row_from_match(match))
+
+
+def row_from_match(match):
+    """Return an iterable that can be used to write a match to a CSV file."""
+    replacements = {}
+    if match.utc_time is not None:
+        replacements['utc_time'] = datetools.datetime_to_iso(match.utc_time)
+    if match.forfeited is not None:
+        replacements['forfeited'] = int(match.forfeited)
+    return match._replace(**replacements)
 
 
 def consolidate(sources):
@@ -70,7 +81,7 @@ def consolidate(sources):
             print("Couldn't list subdirectories:", e, file=sys.stderr)
             return
 
-        new_regions = set(subdir.name for subdir in subdirs)
+        new_regions = {subdir.name for subdir in subdirs}
         regions.update(new_regions)
         for region in new_regions:
             sources_by_region[region].append(source)
@@ -128,9 +139,9 @@ def consolidate_region(region, sources):
 
 def main():
     """Fetch the data."""
-    for source in fetching.sources:
+    for source in storing.sources:
         store_all_as_csv(source)
-    consolidate(fetching.sources)
+    consolidate(storing.sources)
 
 
 if __name__ == '__main__':
