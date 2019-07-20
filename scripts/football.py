@@ -100,3 +100,31 @@ class Match(typing.NamedTuple):
     away_red: int = None
     utc_time: datetime.datetime = None
     forfeited: bool = None
+
+    @property
+    def score(self):
+        """The full time score of the match."""
+        return self.home_goals, self.away_goals
+
+
+class MatchRecord(typing.NamedTuple):
+    """A football match record with contextualizing data."""
+    match: Match
+    region: str
+    competition: str
+    season: str
+
+    @property
+    def date(self):
+        """The date on which the match took place."""
+        return self.match.date
+
+
+def result(score):
+    """Return 1, X or 2."""
+    home, away = score
+    if home > away:
+        return '1'
+    if home < away:
+        return '2'
+    return 'X'
