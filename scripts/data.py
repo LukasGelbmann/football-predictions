@@ -36,8 +36,8 @@ def competitions(region):
             return '1st league'
         return competition
 
-    result = set(paths.extract_competition(path) for path in csv_paths)
-    return sorted(result, key=key)
+    result_set = {paths.extract_competition(path) for path in csv_paths}
+    return sorted(result_set, key=key)
 
 
 def seasons(region, competition):
@@ -91,6 +91,10 @@ def parse_field(name, value):
         return int(value)
     if not value:
         return None
-    if name == 'time':
-        raise NotImplementedError("Parsing timestamps isn't implemented yet.")
+    if name == 'utc_time':
+        return datetools.datetime_from_iso(value)
+    if name == 'forfeited':
+        if value not in {'0', '1'}:
+            raise ValueError(f"Boolean field should be 0 or 1, is {value!r}")
+        return bool(int(value))
     return int(value)

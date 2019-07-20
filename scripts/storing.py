@@ -3,6 +3,7 @@
 
 import csv
 import itertools
+import pprint
 import sys
 
 import datetools
@@ -20,6 +21,13 @@ class Source:
         self.competitions = None
         self.seasons = None
         self.fetch_season = None
+
+
+def print_fields(fields, explanation):
+    """Pretty print fields to stderr."""
+    print(f'{explanation}:', file=sys.stderr)
+    pprint.pprint(fields, stream=sys.stderr)
+    print(file=sys.stderr)
 
 
 def _get_football_data():
@@ -66,36 +74,47 @@ def _get_football_data():
         'away': ['AwayTeam', 'Away', 'AT'],
     }
 
-    int_fields = {
+    score_fields = {
         'home_goals': ['FTHG', 'HG'],
         'away_goals': ['FTAG', 'AG'],
-        'home_half_time': ['HTHG'],
-        'away_half_time': ['HTAG'],
-        'home_shots': ['HS'],
-        'away_shots': ['AS'],
-        'home_shots_on_target': ['HST'],
-        'away_shots_on_target': ['AST'],
-        'home_woodwork': ['HHW'],
-        'away_woodwork': ['AHW'],
-        'home_corners': ['HC'],
-        'away_corners': ['AC'],
-        'home_fouls_committed': ['HF'],
-        'away_fouls_committed': ['AF'],
-        'home_free_kicks_conceded': ['HFKC'],
-        'away_free_kicks_conceded': ['AFKC'],
-        'home_offsides': ['HO'],
-        'away_offsides': ['AO'],
-        'home_yellow': ['HY'],
-        'away_yellow': ['AY'],
-        'home_red': ['HR'],
-        'away_red': ['AR'],
     }
 
-    int_fields_uk = int_fields.copy()
+    int_fields_general = {
+        'home_half_time': 'HTHG',
+        'away_half_time': 'HTAG',
+        'home_shots': 'HS',
+        'away_shots': 'AS',
+        'home_shots_on_target': 'HST',
+        'away_shots_on_target': 'AST',
+        'home_woodwork': 'HHW',
+        'away_woodwork': 'AHW',
+        'home_corners': 'HC',
+        'away_corners': 'AC',
+        'home_fouls_committed': 'HF',
+        'away_fouls_committed': 'AF',
+        'home_free_kicks_conceded': 'HFKC',
+        'away_free_kicks_conceded': 'AFKC',
+        'home_offsides': 'HO',
+        'away_offsides': 'AO',
+        'home_yellow': 'HY',
+        'away_yellow': 'AY',
+        'home_red': 'HR',
+        'away_red': 'AR',
+    }
+
+    int_fields_uk = int_fields_general.copy()
     del int_fields_uk['home_yellow']
     del int_fields_uk['away_yellow']
-    int_fields_uk['home_yellow_no_red'] = ['HY']
-    int_fields_uk['away_yellow_no_red'] = ['AY']
+    int_fields_uk['home_yellow_no_red'] = 'HY'
+    int_fields_uk['away_yellow_no_red'] = 'AY'
+
+    kwargs_keys = (set(str_fields) | set(score_fields)
+                   | set(int_fields_general) | set(int_fields_uk))
+    kwargs_keys_home = {key for key in kwargs_keys if key.startswith('home')}
+    kwargs_keys_away = {key for key in kwargs_keys if key.startswith('away')}
+
+    kwarg_pairs = list(zip(sorted(kwargs_keys_home), sorted(kwargs_keys_away)))
+    assert all(home[4:] == away[4:] for home, away in kwarg_pairs)
 
     season_folders = {}
     for year in range(1994, 2020):
@@ -157,8 +176,9 @@ def _get_football_data():
 
         path = get_path(region, competition, season)
         for fields in raw_fields(path):
-            if can_get_match(fields):
-                yield match_from_fields(fields, region)
+            match = match_from_fields(fields, region)
+            if match:
+                yield match
 
     def fetch_extra_season(region, competition, season):
         """Yield all matches of an extra region's season from football-data."""
@@ -168,31 +188,57 @@ def _get_football_data():
 
         path = get_extra_path(region)
         for fields in raw_fields(path):
-            if season_from_raw(fields) == season and can_get_match(fields):
-                yield match_from_fields(fields, region)
+            if season_from_raw(fields) == season:
+                match = match_from_fields(fields, region)
+                if match:
+                    yield match
 
-    def can_get_match(fields):
-        """Return True if the fields can be used to make a Match object."""
-        return (fields['Date']
-                and any(fields.get(name) for name in int_fields['home_goals'])
-                and any(fields.get(name) for name in int_fields['away_goals']))
+    def match_from_fields(fields, region, check_consistency=False):
+        """Return a football.Match object."""
 
-    def match_from_fields(fields, region):
-        """Return a Match object."""
+        int_fields = get_int_fields(region)
+
+        forfeited = None
+        half_time_is_full_time = False
 
         kwargs = {}
 
-        date_str = fields['Date']
-        for format_str in '%d/%m/%y', '%d/%m/%Y':
-            try:
-                kwargs['date'] = datetools.parse_date(date_str, format_str)
-            except ValueError:
-                pass
-            else:
-                break
+        for target_name, source_names in score_fields.items():
+            for name in source_names:
+                value = fields.get(name)
+                if value:
+                    kwargs[target_name] = int(value)
+                    break
 
-        if 'date' not in kwargs:
-            raise ValueError(f"Couldn't parse date: {date_str!r}")
+        if len(kwargs) == 1:
+            print_fields(fields, "Score fields are inconsistent")
+            return None
+
+        if not kwargs:
+            home_half_time = None
+            home_half_time_str = fields.get(int_fields['home_half_time'])
+            if home_half_time_str:
+                home_half_time = int(home_half_time_str)
+
+            away_half_time = None
+            away_half_time_str = fields.get(int_fields['away_half_time'])
+            if away_half_time_str:
+                away_half_time = int(away_half_time_str)
+
+            if home_half_time is None or away_half_time is None:
+                if home_half_time is not None or away_half_time is not None:
+                    print_fields(fields, "Half time fields are inconsistent")
+                return None
+
+            if {home_half_time, away_half_time} == {3, 0}:
+                half_time_is_full_time = True
+                forfeited = True
+                print_fields(fields, "Treating match as forfeited")
+            else:
+                print_fields(fields, "Match seems abandoned")
+                return None
+
+        kwargs['date'], kwargs['utc_time'] = date_and_utc_time(fields, region)
 
         for target_name, source_names in str_fields.items():
             for name in source_names:
@@ -201,11 +247,21 @@ def _get_football_data():
                     kwargs[target_name] = value.strip()
                     break
 
-        for target_name, source_names in get_int_fields(region).items():
-            for name in source_names:
-                value = fields.get(name)
-                if value:
-                    kwargs[target_name] = int(value)
+        for target_name, source_name in int_fields.items():
+            value = fields.get(source_name)
+            if value:
+                kwargs[target_name] = int(value)
+
+        kwargs['forfeited'] = forfeited
+
+        if half_time_is_full_time:
+            kwargs['home_goals'] = kwargs.pop('home_half_time')
+            kwargs['away_goals'] = kwargs.pop('away_half_time')
+
+        if check_consistency:
+            for home_name, away_name in kwarg_pairs:
+                if (home_name in kwargs) != (away_name in kwargs):
+                    print_fields(fields, "Field pairs are inconsistent")
                     break
 
         return football.Match(**kwargs)
@@ -221,6 +277,36 @@ def _get_football_data():
 
         with file:
             yield from csv.DictReader(file)
+
+    def date_and_utc_time(fields, region, check_plausibility=False):
+        """Return local date and UTC datetime."""
+
+        date_str = fields['Date']
+        time_str = fields.get('Time')
+
+        if time_str:
+            datetime_str = f'{date_str} {time_str}'
+            utc_time = datetools.parse_datetime(datetime_str, '%d/%m/%Y %H:%M')
+            timezone = datetools.TIMEZONES[region]
+            local_time = datetools.from_utc(utc_time, timezone)
+            if check_plausibility and 0 <= local_time.hour < 9:
+                print_fields(fields, "Strange time to play football")
+            date = local_time.date()
+            return date, utc_time
+
+        date = None
+        for format_str in '%d/%m/%y', '%d/%m/%Y':
+            try:
+                date = datetools.parse_date(date_str, format_str)
+            except ValueError:
+                pass
+            else:
+                break
+
+        if date is None:
+            raise ValueError(f"Couldn't parse date: {date_str!r}")
+
+        return date, None
 
     def get_path(region, competition, season):
         """Return the path where the raw data of a season is stored."""
@@ -241,9 +327,9 @@ def _get_football_data():
 
     def get_int_fields(region):
         """Return a mapping from target field names to source field names."""
-        if region in ('england', 'scotland'):
+        if region in {'england', 'scotland'}:
             return int_fields_uk
-        return int_fields
+        return int_fields_general
 
     source = Source('football-data')
     source.regions = get_regions

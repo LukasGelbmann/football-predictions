@@ -70,7 +70,7 @@ LEAGUES = {
 class Match(typing.NamedTuple):
     """A football match."""
 
-    date: datetime.date
+    date: datetime.date    # Local date.
     home: str
     away: str
     home_goals: int
@@ -98,4 +98,5 @@ class Match(typing.NamedTuple):
     away_yellow_no_red: int = None
     home_red: int = None
     away_red: int = None
-    time: datetime.datetime = None
+    utc_time: datetime.datetime = None
+    forfeited: bool = None
