@@ -102,10 +102,8 @@ def print_score_frequencies(matches, level=2):
     for score, count in counts.items():
         category_counts[prediction.category_from_score(score)] += count
     for category, count in sorted(category_counts.items(), key=key):
-        home, away = category
         frequency = count / len(matches)
-        sep = ':' if home + away < prediction.MAX_GOALS - 1 else '~'
-        print(f'{home}{sep}{away} {frequency:6.2%}')
+        print(f'{prediction.category_to_str(category)} {frequency:6.2%}')
     print()
 
 
