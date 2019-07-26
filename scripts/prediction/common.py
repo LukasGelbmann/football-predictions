@@ -53,11 +53,17 @@ def category_from_score(score):
 @functools.lru_cache()
 def categories():
     """Return an iterable of possible categories."""
+
     result = set()
     for home in range(0, MAX_GOALS + 1):
         for away in range(0, MAX_GOALS + 1):
             result.add(category_from_score((home, away)))
-    return sorted(result)
+
+    def key(category):
+        home, away = category
+        return away - home, home
+
+    return sorted(result, key=key)
 
 
 def num_categories():
