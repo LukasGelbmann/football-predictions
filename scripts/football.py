@@ -5,10 +5,16 @@ import datetime
 import typing
 
 
+# We assume that all matches start at this local time at the earliest, if the
+# time is not specified.
+EARLIEST_START = datetime.time(9)
+
+LATEST_START = datetime.time.max
+
 THREE_POINTS_ERA = {
     'argentina': 1995,
     'austria': 1995,
-    'belgium': 1995,     # Second division was 1993, but we don't have it yet.
+    'belgium': 1995,     # Second division was 1993.
     'brazil': 1995,
     'china': 1995,
     'denmark': 1995,

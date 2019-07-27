@@ -7,20 +7,31 @@ This script requires Python 3.6 or higher."""
 
 import collections
 import datetime
-import itertools
 import math
-import operator
 import statistics
+import sys
 
 import data
+import datetools
+import football
 import prediction
 
 
 DEFAULT_P = 0.005
 
+# Date rolls over at this UTC time.
+UTC_DATE_CUTOFF = datetime.time(5)
+
+# Maximum match duration.
+MAX_DURATION = datetime.timedelta(hours=3)
+
+ONE_DAY = datetime.timedelta(1)
+
 
 def print_evaluation(predictor, all_records, prediction_start):
-    """Evaluate a predictor."""
+    """Evaluate a predictor.
+
+    `all_records` must be sorted ascending by date."""
 
     print(f'# Predictor {predictor.name!r} #')
     print()
@@ -28,20 +39,59 @@ def print_evaluation(predictor, all_records, prediction_start):
     all_scores = []
     total_probabilities = collections.defaultdict(float)
     category_counts = collections.Counter()
-    key = operator.attrgetter('date')
-    for date, records in itertools.groupby(all_records, key=key):
-        records_list = list(records)
-        if date >= prediction_start:
-            for record in records_list:
-                encounter = prediction.encounter(record)
-                probabilities = predictor.predict(encounter)
-                category = prediction.category(record)
-                score = math.log(probabilities[category])
-                all_scores.append(score)
-                category_counts[category] += 1
-                for category, probability in probabilities.items():
-                    total_probabilities[category] += probability
-        predictor.feed_records(records_list)
+
+    # 3 days: yesterday, today, tomorrow.  By latest end date / earliest start.
+    records_by_end_date = collections.deque([[], [], []], maxlen=3)
+    encounters_by_start_date = collections.deque([[], [], []], maxlen=3)
+
+    def get_scores():
+        """Pop some encounters, let the predictor predict, then evaluate it."""
+        for encounter, correct_category in encounters_by_start_date.popleft():
+            probabilities = predictor.predict(encounter)
+            if not is_probability_distribution(probabilities.values()):
+                raise ValueError("invalid probability distribution")
+            probability = probabilities[correct_category]
+            score = math.log(probability) if probability > 0 else -math.inf
+            all_scores.append(score)
+            category_counts[correct_category] += 1
+            for category, probability in probabilities.items():
+                total_probabilities[category] += probability
+
+    previous_today = None
+    for record in all_records:
+        today = record.date
+        if previous_today is None:
+            previous_today = today
+
+        while previous_today < today:
+            get_scores()
+            encounters_by_start_date.append([])
+
+            predictor.feed_records(records_by_end_date.popleft())
+            records_by_end_date.append([])
+
+            previous_today += ONE_DAY
+
+        earliest_start, latest_end = earliest_latest(record)
+        start_diff = (earliest_start - today).days
+        if not -1 <= start_diff <= 1:
+            print(f"Weird start date: expected {today} +/- 1 day, got "
+                  f"{earliest_start}.", file=sys.stderr)
+            continue
+        end_diff = (latest_end - today).days
+        if not -1 <= end_diff <= 1:
+            print(f"Weird end date: expected {today} +/- 1 day, got "
+                  f"{latest_end}.", file=sys.stderr)
+            continue
+
+        if earliest_start >= prediction_start:
+            element = prediction.encounter(record), prediction.category(record)
+            encounters_by_start_date[start_diff + 1].append(element)
+        records_by_end_date[end_diff + 1].append(record)
+
+    while encounters_by_start_date or records_by_end_date:
+        get_scores()
+        predictor.feed_records(records_by_end_date.popleft())
 
     factor = math.log(prediction.num_categories())
     points = statistics.mean(all_scores) / factor + 1
@@ -63,6 +113,49 @@ def print_evaluation(predictor, all_records, prediction_start):
             suffix = ''
         print(f'{prediction_str} {average_prob:6.2%}{suffix}')
     print()
+
+
+def is_probability_distribution(values):
+    """Return True if `values` is a valid probability distribution."""
+    return math.isclose(sum(values), 1) and all(x >= 0 for x in values)
+
+
+def earliest_latest(record):
+    """Return the earliest start date and latest end date in UTC."""
+
+    utc_time = record.match.utc_time
+    if utc_time is not None:
+        earliest_utc_start = utc_time
+        latest_utc_end = utc_time + MAX_DURATION
+    else:
+        date = record.date
+        region = record.region
+        tzinfo = datetools.TIMEZONES[region]
+
+        local_time_early = datetime.datetime.combine(
+            date, football.EARLIEST_START, tzinfo)
+        earliest_start = local_time_early - datetools.MAX_TIME_DIFF[region]
+        earliest_utc_start = datetools.to_utc(earliest_start)
+
+        local_time_late = datetime.datetime.combine(
+            date, football.LATEST_START, tzinfo)
+        latest_end = local_time_late + MAX_DURATION
+        latest_utc_end = datetools.to_utc(latest_end)
+
+    if earliest_utc_start.time() < UTC_DATE_CUTOFF:
+        earliest_start = earliest_utc_start.date() - ONE_DAY
+    else:
+        earliest_start = earliest_utc_start.date()
+
+    if latest_utc_end.time() <= UTC_DATE_CUTOFF:
+        latest_end = latest_utc_end.date() - ONE_DAY
+    else:
+        latest_end = latest_utc_end.date()
+
+    assert earliest_start <= latest_end, "a match can't end before it starts"
+
+    return earliest_start, latest_end
+
 
 
 def get_bias_str(average_prob, count, num_predictions, p=DEFAULT_P):
