@@ -44,8 +44,13 @@ def print_evaluation(predictor, all_records, prediction_start):
     records_by_end_date = collections.deque([[], [], []], maxlen=3)
     encounters_by_start_date = collections.deque([[], [], []], maxlen=3)
 
+    correct_categories = 0
+    correct_results = 0
+
     def get_scores():
         """Pop some encounters, let the predictor predict, then evaluate it."""
+        nonlocal correct_categories
+        nonlocal correct_results
         for encounter, correct_category in encounters_by_start_date.popleft():
             probabilities = predictor.predict(encounter)
             if not is_probability_distribution(probabilities.values()):
@@ -54,8 +59,17 @@ def print_evaluation(predictor, all_records, prediction_start):
             score = math.log(probability) if probability > 0 else -math.inf
             all_scores.append(score)
             category_counts[correct_category] += 1
+            result_probabilities = collections.defaultdict(float)
             for category, probability in probabilities.items():
                 total_probabilities[category] += probability
+                result_probabilities[football.result(category)] += probability
+            category_guess = max(probabilities, key=probabilities.get)
+            if category_guess == correct_category:
+                correct_categories += 1
+            result_guess = max(result_probabilities,
+                               key=result_probabilities.get)
+            if result_guess == football.result(correct_category):
+                correct_results += 1
 
     previous_today = None
     for record in all_records:
@@ -95,13 +109,19 @@ def print_evaluation(predictor, all_records, prediction_start):
 
     factor = math.log(prediction.num_categories())
     points = statistics.mean(all_scores) / factor + 1
-    print(f'Mean points: {points:.3f}')
+    print(f"Mean points: {points:.3f}")
     print()
 
     num_predictions = len(all_scores)
 
-    print("Mean prediction and deviations from true percentage "
-          f"(p<{DEFAULT_P:.1%}):")
+    category_ratio = correct_categories / num_predictions
+    result_ratio = correct_results / num_predictions
+    print(f"Guessed category: {category_ratio:.2%}")
+    print(f"Guessed result (1/X/2): {result_ratio:.2%}")
+    print()
+
+    print("## Mean prediction and deviations from true percentage "
+          f"(p<{DEFAULT_P:.1%}) ##")
     for category in prediction.categories():
         average_prob = total_probabilities[category] / num_predictions
         count = category_counts[category]
