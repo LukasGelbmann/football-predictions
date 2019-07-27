@@ -278,7 +278,7 @@ def _get_football_data():
         with file:
             yield from csv.DictReader(file)
 
-    def date_and_utc_time(fields, region, check_plausibility=False):
+    def date_and_utc_time(fields, region, check_plausibility=True):
         """Return local date and UTC datetime."""
 
         date_str = fields['Date']
@@ -288,10 +288,15 @@ def _get_football_data():
             datetime_str = f'{date_str} {time_str}'
             utc_time = datetools.parse_datetime(datetime_str, '%d/%m/%Y %H:%M')
             timezone = datetools.TIMEZONES[region]
-            local_time = datetools.from_utc(utc_time, timezone)
-            if check_plausibility and 0 <= local_time.hour < 9:
-                print_fields(fields, "Strange time to play football")
-            date = local_time.date()
+            region_time = datetools.from_utc(utc_time, timezone)
+            if check_plausibility:
+                earliest_local_time = region_time.replace(tzinfo=None)
+                max_time_diff = datetools.MAX_TIME_DIFF[region]
+                latest_local_time = earliest_local_time + max_time_diff
+                if (earliest_local_time.date() == latest_local_time.date()
+                    and latest_local_time.time() < football.EARLIEST_START):
+                    print_fields(fields, "Strange time to play football")
+            date = region_time.date()
             return date, utc_time
 
         date = None
