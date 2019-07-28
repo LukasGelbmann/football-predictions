@@ -1,11 +1,13 @@
 from prediction.common import (Encounter, category, category_from_score,
                                categories, num_categories, MAX_GOALS)
 import prediction.simple
+import prediction.strength_model
 
 
 def get_predictors():
     """Return one of each predictor."""
-    return [prediction.simple.Predictor()]
+    return [prediction.strength_model.Predictor(),
+            prediction.simple.Predictor()]
 
 
 def encounter(record):
