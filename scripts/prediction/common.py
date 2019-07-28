@@ -26,8 +26,8 @@ class Predictor(abc.ABC):
         self.name = name
 
     @abc.abstractmethod
-    def feed_records(self, records):
-        """Add match records to the database."""
+    def feed_record(self, record):
+        """Add a match record to the database."""
 
     @abc.abstractmethod
     def predict(self, encounter):

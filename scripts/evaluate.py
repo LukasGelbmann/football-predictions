@@ -81,7 +81,8 @@ def print_evaluation(predictor, all_records, prediction_start):
             get_scores()
             encounters_by_start_date.append([])
 
-            predictor.feed_records(records_by_end_date.popleft())
+            for stored_record in records_by_end_date.popleft():
+                predictor.feed_record(stored_record)
             records_by_end_date.append([])
 
             previous_today += ONE_DAY
@@ -105,7 +106,8 @@ def print_evaluation(predictor, all_records, prediction_start):
 
     while encounters_by_start_date or records_by_end_date:
         get_scores()
-        predictor.feed_records(records_by_end_date.popleft())
+        for stored_record in records_by_end_date.popleft():
+            predictor.feed_record(stored_record)
 
     factor = math.log(prediction.num_categories())
     points = statistics.mean(all_scores) / factor + 1

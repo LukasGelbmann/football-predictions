@@ -11,6 +11,17 @@ import football
 import paths
 
 
+TEAM_SYNONYMS = {
+    'england': {
+        "Middlesboro": "Middlesbrough"
+    },
+    'germany': {
+        "F Koln": "FC Koln",
+        "St Pauli": "St. Pauli",
+    }
+}
+
+
 class Source:
     """A data source."""
 
@@ -69,7 +80,7 @@ def _get_football_data():
         'usa': 'USA',
     }
 
-    str_fields = {
+    team_fields = {
         'home': ['HomeTeam', 'Home', 'HT'],
         'away': ['AwayTeam', 'Away', 'AT'],
     }
@@ -108,7 +119,7 @@ def _get_football_data():
     int_fields_uk['home_yellow_no_red'] = 'HY'
     int_fields_uk['away_yellow_no_red'] = 'AY'
 
-    kwargs_keys = (set(str_fields) | set(score_fields)
+    kwargs_keys = (set(team_fields) | set(score_fields)
                    | set(int_fields_general) | set(int_fields_uk))
     kwargs_keys_home = {key for key in kwargs_keys if key.startswith('home')}
     kwargs_keys_away = {key for key in kwargs_keys if key.startswith('away')}
@@ -240,12 +251,16 @@ def _get_football_data():
 
         kwargs['date'], kwargs['utc_time'] = date_and_utc_time(fields, region)
 
-        for target_name, source_names in str_fields.items():
+        for target_name, source_names in team_fields.items():
             for name in source_names:
                 value = fields.get(name)
-                if value:
-                    kwargs[target_name] = value.strip()
-                    break
+                if not value:
+                    continue
+                value = value.strip()
+                if region in TEAM_SYNONYMS:
+                    value = TEAM_SYNONYMS[region].get(value, value)
+                kwargs[target_name] = value
+                break
 
         for target_name, source_name in int_fields.items():
             value = fields.get(source_name)
@@ -294,7 +309,8 @@ def _get_football_data():
                 max_time_diff = datetools.MAX_TIME_DIFF[region]
                 latest_local_time = earliest_local_time + max_time_diff
                 if (earliest_local_time.date() == latest_local_time.date()
-                    and latest_local_time.time() < football.EARLIEST_START):
+                        and latest_local_time.time()
+                        < football.EARLIEST_START):
                     print_fields(fields, "Strange time to play football")
             date = region_time.date()
             return date, utc_time

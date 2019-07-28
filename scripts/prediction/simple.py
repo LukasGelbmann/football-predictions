@@ -16,12 +16,11 @@ class Predictor(prediction.common.Predictor):
         self.category_counts = collections.defaultdict(collections.Counter)
         self.memory = collections.deque()
 
-    def feed_records(self, records):
-        for record in records:
-            category = prediction.common.category(record)
-            key = record.region, record.competition
-            self.category_counts[key][category] += 1
-            self.memory.append(record)
+    def feed_record(self, record):
+        category = prediction.common.category(record)
+        key = record.region, record.competition
+        self.category_counts[key][category] += 1
+        self.memory.append(record)
 
     def predict(self, encounter):
         date = encounter.date
