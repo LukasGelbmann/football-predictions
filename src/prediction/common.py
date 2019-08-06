@@ -1,3 +1,6 @@
+"""Prediction resources common to all modules in this package."""
+
+
 import abc
 import datetime
 import functools

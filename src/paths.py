@@ -1,10 +1,13 @@
 """Path-related resources."""
 
 
+import os
 import pathlib
 
 
-HERE = pathlib.Path(__file__).resolve().parent
+# Path().resolve() isn't used here because it doesn't work in PyPy 3.6 for
+# Windows.
+HERE = pathlib.Path(os.path.realpath(__file__)).parent
 DATA_DIR = HERE.parent / 'data'
 CONSOLIDATED_DIR = DATA_DIR / 'consolidated'
 

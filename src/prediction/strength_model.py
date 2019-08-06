@@ -1,3 +1,6 @@
+"""A strength-based predictor."""
+
+
 import collections
 import functools
 import math
@@ -57,7 +60,7 @@ class Predictor(prediction.common.Predictor):
             for match in self.stored_matches[region]:
                 if target_date < match.date:
                     print(f"Target date {target_date} before match date "
-                          f"{match_date}.", file=sys.stderr)
+                          f"{match.date}.", file=sys.stderr)
                 goal_diff = match.home_goals - match.away_goals
                 strength_diff = strengths[match.home] - strengths[match.away]
                 change = strength_change(goal_diff, strength_diff)
@@ -65,6 +68,8 @@ class Predictor(prediction.common.Predictor):
                 new_strengths[match.home] += adjustment
                 new_strengths[match.away] -= adjustment
             strengths = new_strengths
+
+        print(region, target_date)
 
         self.strengths_caches[region] = strengths
         self.valid_caches.add(region)
@@ -83,7 +88,8 @@ def devaluation(timedelta):
 @functools.lru_cache()
 def category_factors():
     """Return a list of categories and the factors we need to apply."""
-    result_counts = collections.Counter(football.result(category)
+    result_counts = collections.Counter(
+        football.result(category)
         for category in prediction.common.categories())
     factors = []
     for category in prediction.common.categories():
