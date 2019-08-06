@@ -1,3 +1,6 @@
+"""A simple predictor."""
+
+
 import collections
 import datetime
 

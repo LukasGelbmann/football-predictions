@@ -11,9 +11,9 @@ import shutil
 import sys
 
 import datetools
-import storing
 import football
 import paths
+import storing
 
 
 def store_all_as_csv(source):
