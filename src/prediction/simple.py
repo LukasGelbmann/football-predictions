@@ -7,8 +7,8 @@ import datetime
 import prediction.common
 
 
-DAYS_PER_YEAR = 365.2425
-KEEP_MATCHES = datetime.timedelta(days=round(10*DAYS_PER_YEAR))
+KEEP_MATCHES = datetime.timedelta(
+    days=round(10*prediction.common.DAYS_PER_YEAR))
 
 
 class Predictor(prediction.common.Predictor):

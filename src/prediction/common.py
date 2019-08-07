@@ -10,6 +10,8 @@ import typing
 MAX_GOALS = 7
 MAX_BASE = MAX_GOALS // 2
 
+DAYS_PER_YEAR = 365.2425
+
 
 class Encounter(typing.NamedTuple):
     """A match whose result is not given."""
