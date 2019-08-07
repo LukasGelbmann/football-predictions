@@ -7,7 +7,10 @@ import sys
 
 import datetools
 import football
+import functools
 import paths
+import prediction
+import prediction_zone
 
 
 def regions():
@@ -62,9 +65,14 @@ def all_records():
     """Return all records in chronological order."""
     result = []
     for region in regions():
-        for competition in competitions(region):
-            result.extend(competition_records(region, competition))
+        result.extend(region_records(region))
     return sorted(result, key=operator.attrgetter('date'))
+
+
+def region_records(region):
+    """Yield all records of a region."""
+    for competition in competitions(region):
+        yield from competition_records(region, competition)
 
 
 def competition_records(region, competition):
@@ -103,6 +111,24 @@ def season_matches(region, competition, season):
             yield football.Match(**fields)
 
 
+def season_encounters(region, competition, season):
+    """Yield all future encounters of a season."""
+    path = prediction_zone.file_path(region, competition, season)
+    try:
+        file = open(path, encoding='utf-8', newline='')
+    except OSError as e:
+        print("Couldn't open calendar CSV file:", e, file=sys.stderr)
+        return
+
+    with file:
+        reader = csv.reader(file)
+        for fields in reader:
+            datetime_str, _, home, away, _, _ = fields
+            date = datetools.datetime_from_iso(datetime_str).date()
+            yield prediction.Encounter(date, home, away, region, competition,
+                                       season)
+
+
 def parse_field(name, value):
     """Convert a field to the correct data type."""
     if name == 'date':
@@ -120,3 +146,27 @@ def parse_field(name, value):
             raise ValueError(f"Boolean field should be 0 or 1, is {value!r}")
         return bool(int(value))
     return int(value)
+
+
+def username():
+    """Return our username."""
+    username, _ = credentials()
+    return username
+
+
+def password():
+    """Return our password."""
+    _, password = credentials()
+    return password
+
+
+@functools.lru_cache()
+def credentials():
+    """Return our username and password."""
+    path = paths.DATA_DIR / 'credentials.txt'
+    try:
+        file = open(path, encoding='utf-8', newline='')
+    except OSError as e:
+        print("Couldn't open credentials file:", e, file=sys.stderr)
+        raise
+    return tuple(line.strip() for line in file)

@@ -13,7 +13,16 @@ import paths
 
 TEAM_SYNONYMS = {
     'england': {
-        "Middlesboro": "Middlesbrough"
+        "Brighton": "Brighton & Hove Albion",
+        "Leicester": "Leicester City",
+        "Man City": "Manchester City",
+        "Man United": "Manchester United",
+        "Middlesboro": "Middlesbrough",
+        "Newcastle": "Newcastle United",
+        "Norwich": "Norwich City",
+        "Tottenham": "Tottenham Hotspur",
+        "West Ham": "West Ham United",
+        "Wolves": "Wolverhampton",
     },
     'germany': {
         "F Koln": "FC Koln",

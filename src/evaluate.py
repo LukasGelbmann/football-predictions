@@ -38,7 +38,9 @@ def print_evaluation(predictor, all_records, prediction_start):
 
     all_scores = []
     total_probabilities = collections.defaultdict(float)
+    total_result_probabilities = collections.defaultdict(float)
     category_counts = collections.Counter()
+    result_counts = collections.Counter()
 
     # 3 days: yesterday, today, tomorrow.  By latest end date / earliest start.
     records_by_end_date = collections.deque([[], [], []], maxlen=3)
@@ -59,10 +61,13 @@ def print_evaluation(predictor, all_records, prediction_start):
             score = math.log(probability) if probability > 0 else -math.inf
             all_scores.append(score)
             category_counts[correct_category] += 1
+            result_counts[football.result(correct_category)] += 1
             result_probabilities = collections.defaultdict(float)
             for category, probability in probabilities.items():
                 total_probabilities[category] += probability
                 result_probabilities[football.result(category)] += probability
+            for result, probability in result_probabilities.items():
+                total_result_probabilities[result] += probability
             category_guess = max(probabilities, key=probabilities.get)
             if category_guess == correct_category:
                 correct_categories += 1
@@ -124,6 +129,17 @@ def print_evaluation(predictor, all_records, prediction_start):
 
     print("## Mean prediction and deviations from true percentage "
           f"(p<{DEFAULT_P:.1%}) ##")
+
+    for result in '1', 'X', '2':
+        average_prob = total_result_probabilities[result] / num_predictions
+        count = result_counts[result]
+        bias_str = get_bias_str(average_prob, count, num_predictions)
+        if bias_str:
+            suffix = f' ({bias_str})'
+        else:
+            suffix = ''
+        print(f'{result} {average_prob:6.2%}{suffix}')
+
     for category in prediction.categories():
         average_prob = total_probabilities[category] / num_predictions
         count = category_counts[category]
@@ -134,6 +150,7 @@ def print_evaluation(predictor, all_records, prediction_start):
         else:
             suffix = ''
         print(f'{prediction_str} {average_prob:6.2%}{suffix}')
+
     print()
 
 
