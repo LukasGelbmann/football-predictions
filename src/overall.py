@@ -14,7 +14,7 @@ import prediction_zone
 import simulate
 
 
-NUM_SIMULATIONS = 1000
+NUM_SIMULATIONS = 250
 
 
 def get_team_chances(records, encounters, region,
@@ -46,7 +46,7 @@ def print_overall_prediction(team_chances):
 
 
 def main():
-    """Buy sets and update orders."""
+    """Make an overall prediction and print it."""
 
     region = 'england'
     competition = 'premier'
