@@ -18,7 +18,7 @@ import simulate
 NUM_PREDICTIONS = 10
 
 
-def make_predictions(region, competition, season, records, encounters,
+def make_predictions(records, encounters,
                      get_predictor=prediction.strength_model.Predictor):
     """Make some predictions and upload them."""
 
