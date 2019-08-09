@@ -44,6 +44,21 @@ def file_path(region, competition, season):
     return RAW_DIR / filename
 
 
+def predict_score(encounter, predicted_score):
+    """Place a score prediction."""
+    name = season_name(encounter.region, encounter.competition,
+                       encounter.season)
+    home_goals, away_goals = predicted_score
+    data_dict = {'username': data.username(), 'password': data.password(),
+                 'hometeam': encounter.home, 'awayteam': encounter.away,
+                 'homegoals': home_goals, 'awaygoals': away_goals}
+    data_bytes = urllib.parse.urlencode(data_dict).encode()
+    url = f'{BASE_URL}/resultprediction/{name}/match'
+    with urllib.request.urlopen(url, data_bytes) as response:
+        if response.getcode() != 200:
+            print("Couldn't predict score:", response.read(), file=sys.stderr)
+
+
 def place_order(region, competition, season, team, order, price, limit):
     """Place an order online."""
     name = season_name(region, competition, season)
