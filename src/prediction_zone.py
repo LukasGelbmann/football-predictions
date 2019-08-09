@@ -108,3 +108,30 @@ def buy_sets(region, competition, season, amount):
             print("Couldn't buy sets:", response.read(), file=sys.stderr)
             raise NotImplementedError("don't know how to handle this")
         return int(response.read().split()[0])
+
+
+def predict_result(encounter, result):
+    """Place a result prediction."""
+    name = season_name(encounter.region, encounter.competition,
+                       encounter.season)
+    data_dict = {'username': data.username(), 'password': data.password(),
+                 'hometeam': encounter.home, 'awayteam': encounter.away,
+                 'prediction': result}
+    data_bytes = urllib.parse.urlencode(data_dict).encode()
+    url = f'{BASE_URL}/predictionleague/{name}/match'
+    with urllib.request.urlopen(url, data_bytes) as response:
+        if response.getcode() != 200:
+            print("Couldn't predict score:", response.read(), file=sys.stderr)
+
+
+def get_league_size(region, competition, season):
+    """Return the size of our league."""
+    name = season_name(region, competition, season)
+    data_dict = {'username': data.username(), 'password': data.password()}
+    data_bytes = urllib.parse.urlencode(data_dict).encode()
+    url = f'{BASE_URL}/predictionleague/{name}/get_ranking'
+    with urllib.request.urlopen(url, data_bytes) as response:
+        if response.getcode() != 200:
+            print("Couldn't get ranking:", response.read(), file=sys.stderr)
+            raise NotImplementedError("don't know how to handle this")
+        return len(list(response))
