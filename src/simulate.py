@@ -10,56 +10,45 @@ import football
 import prediction
 
 
-VALUES_PREMIER = [1000, 800, 650, 550, 450, 400, 360, 330, 300, 280, 260, 240,
-                  220, 210, 200, 190, 180, 120, 110, 100]
-
-
-def simulate_season_table(records, encounters, predictor, region):
+def table(matches, fixtures, played, competition, predictor):
     """Return the league table after a simulated season."""
-    matches = simulate_season(records, encounters, predictor, region)
-    return table_from_matches(matches, region)
+    simulated = simulate_season(matches, fixtures, competition, predictor)
+    matches = [*played, *simulated]
+    return table_from_matches(matches, competition)
 
 
-def simulate_season_values(records, encounters, predictor, region):
-    """Return the value of the teams after a simulated season."""
-    matches = simulate_season(records, encounters, predictor, region)
-    return team_values_from_matches(matches, region)
-
-
-def simulate_season(records, encounters, predictor, region):
+def simulate_season(matches, fixtures, competition, predictor):
     """Return the matches after a simulated season."""
 
-    for record in records:
-        predictor.feed_record(record)
+    for match in matches:
+        predictor.feed_match(match)
 
-    category_to_score = get_category_to_score(records)
+    category_to_score = get_category_to_score(matches)
 
-    matches = []
-    groups = itertools.groupby(encounters, key=operator.attrgetter('date'))
-    for date, todays_encounters in groups:
-        todays_records = []
-        for encounter in todays_encounters:
-            probabilities = predictor.predict(encounter)
+    simulated = []
+    groups = itertools.groupby(fixtures, key=operator.attrgetter('date'))
+    for _, todays_fixtures in groups:
+        todays_matches = []
+        for fixture in todays_fixtures:
+            probabilities = predictor.predict(fixture)
             score = sample_score(probabilities, category_to_score)
-            match = football.Match(encounter.date, encounter.home,
-                                   encounter.away, *score)
-            record = football.MatchRecord(match, encounter.region,
-                                          encounter.competition,
-                                          encounter.season)
-            matches.append(match)
-            todays_records.append(record)
-        for record in todays_records:
-            predictor.feed_record(record)
+            match = football.Match(fixture.competition, fixture.date,
+                                   fixture.season, fixture.home, fixture.away,
+                                   *score)
+            simulated.append(match)
+            todays_matches.append(match)
+        for match in todays_matches:
+            predictor.feed_match(match)
 
-    return matches
+    return simulated
 
 
-def get_category_to_score(records):
+def get_category_to_score(matches):
     """Return a mapping from categories to score-probability mappings."""
 
     counters = collections.defaultdict(collections.Counter)
-    for record in records:
-        score = record.match.score
+    for match in matches:
+        score = match.score
         category = prediction.category_from_score(score)
         counters[category][score] += 1
 
@@ -79,19 +68,11 @@ def sample_score(probabilities, category_to_score):
     return random.choices(list(scores), scores.values())[0]
 
 
-def team_values_from_matches(matches, region):
-    """Return teams' values at the end of the season."""
-    teams = table_from_matches(matches, region)
-    import pprint;pprint.pprint(teams)
-    return dict(zip(teams, VALUES_PREMIER))
-
-
-def table_from_matches(matches, region):
+def table_from_matches(matches, competition):
     """Return a league table."""
 
-    if region != 'england':
-        raise NotImplementedError("league tables for non-england competitions "
-                                  "aren't implemented")
+    if len(matches) != football.num_matches(competition):
+        raise ValueError("unexpected number of matches")
 
     points = collections.Counter()
     scored = collections.Counter()
@@ -118,7 +99,7 @@ def table_from_matches(matches, region):
         goal_diff = scored[team] - conceded[team]
         keys[team] = points[team], goal_diff, scored[team], tiebreaker
 
-    if len(keys) != len(VALUES_PREMIER):
+    if len(keys) != football.league_size(competition):
         raise ValueError("unexpected number of teams")
 
     return sorted(keys, key=keys.get, reverse=True)

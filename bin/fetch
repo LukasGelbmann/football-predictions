@@ -1,7 +1,7 @@
 #!/bin/sh --
 
 PROJECT_PATH=$(dirname -- "$(dirname -- "$(realpath -- "$0")")")
-SCRIPT_PATH="${PROJECT_PATH}/src/consolidate.py"
+SCRIPT_PATH="${PROJECT_PATH}/src/fetch.py"
 
 if type pypy3 >/dev/null 2>&1; then
     pypy3 -- "${SCRIPT_PATH}" "$@"

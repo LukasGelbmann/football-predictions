@@ -1,147 +1,172 @@
 #!/usr/bin/env python3
 
-"""Script to fetch historical result data from disk and from the Internet.
+"""Script to consolidate historical result data on disk.
 
 This script requires Python 3.6 or higher."""
 
 
 import csv
 import collections
-import shutil
+import datetime
 import sys
 
 import datetools
 import football
 import paths
-import storing
+import sources
 
 
-def store_all_as_csv(source):
-    """Load all seasons from a source and and store them in CSV files."""
-    total_seasons = 0
-    for region in source.regions():
-        num_seasons = 0
-        for competition in source.competitions(region):
-            for season in source.seasons(region, competition):
-                store_as_csv(region, competition, season, source)
-                num_seasons += 1
-        print(f"Stored {num_seasons} "
-              f"season{'s' if num_seasons != 1 else ''} from {source.name} "
-              f"in {region}")
-        total_seasons += num_seasons
-    print(f"Done storing {total_seasons} "
-          f"season{'s' if total_seasons != 1 else ''} from {source.name}")
-    print()
+def consolidate(all_sources):
+    """Consolidate and store all seasons from the three-points era."""
+
+    sources_by_region = collections.defaultdict(list)
+    for source in all_sources:
+        for region in source.regions():
+            sources_by_region[region].append(source)
+
+    num_regions = len(sources_by_region)
+
+    print(f"Found {num_regions} region{'s' if num_regions != 1 else ''}.")
+
+    num_competitions = 0
+    for region, region_sources in sorted(sources_by_region.items()):
+        sources_by_competition = collections.defaultdict(list)
+        for source in region_sources:
+            for competition in source.competitions(region):
+                sources_by_competition[competition].append(source)
+        num_competitions += len(sources_by_competition)
+
+        for competition, sources_seq in sorted(sources_by_competition.items()):
+            consolidate_matches(competition, sources_seq)
+            consolidate_fixtures(competition, sources_seq)
+
+    print(f"Done consolidating {num_competitions} "
+          f"competition{'s' if num_competitions != 1 else ''}.")
 
 
-def store_as_csv(region, competition, season, source):
-    """Load a season's results and store them in a CSV file."""
+def consolidate_matches(competition, sources_iter):
+    """Consolidate and store all matches from the three-points era."""
 
-    source_dir = paths.DATA_DIR / source.name
-    path = paths.season_csv_path(region, competition, season, source_dir)
-    file_dir = path.parent
+    filename = f'{competition.region}_{competition.name}.csv'
+    path = paths.CONSOLIDATED_DIR / filename
+
     try:
-        file_dir.mkdir(parents=True, exist_ok=True)
+        paths.CONSOLIDATED_DIR.mkdir(exist_ok=True)
     except OSError as e:
-        print("Couldn't make directory for results:", e, file=sys.stderr)
+        print("Couldn't make target directory:", e, file=sys.stderr)
         return
+
+    matches = collections.defaultdict(list)
+    for source in sources_iter:
+        for match in source.matches(competition):
+            key = match.date, match.home, match.away
+            matches[key].append(match)
+
+    if not matches:
+        return
+
+    matches_iter = (consolidate_single(replicas, football.Match)
+                    for replicas in matches.values())
 
     try:
         file = open(path, 'w', encoding='utf-8', newline='')
     except OSError as e:
-        print("Couldn't open CSV file:", e, file=sys.stderr)
+        print("Couldn't open CSV file to write to:", e, file=sys.stderr)
         return
 
     with file:
-        writer = csv.writer(file, lineterminator='\n')
-        for match in source.fetch_season(region, competition, season):
+        writer = csv.writer(file)
+        for match in sorted(matches_iter, key=sort_key):
             writer.writerow(row_from_match(match))
+
+
+def consolidate_fixtures(competition, sources_iter):
+    """Consolidate and store all fixtures."""
+
+    filename = f'{competition.region}_{competition.name}_fixtures.csv'
+    path = paths.CONSOLIDATED_DIR / filename
+
+    try:
+        paths.CONSOLIDATED_DIR.mkdir(exist_ok=True)
+    except OSError as e:
+        print("Couldn't make target directory:", e, file=sys.stderr)
+        return
+
+    fixtures = collections.defaultdict(list)
+    for source in sources_iter:
+        for fixture in source.fixtures(competition):
+            key = fixture.date, fixture.home, fixture.away
+            fixtures[key].append(fixture)
+
+    if not fixtures:
+        return
+
+    fixtures_iter = (consolidate_single(replicas, football.Fixture)
+                     for replicas in fixtures.values())
+
+    try:
+        file = open(path, 'w', encoding='utf-8', newline='')
+    except OSError as e:
+        print("Couldn't open CSV file for fixtures:", e, file=sys.stderr)
+        return
+
+    with file:
+        writer = csv.writer(file)
+        for fixture in sorted(fixtures_iter, key=sort_key):
+            writer.writerow(row_from_fixture(fixture))
+
+
+def consolidate_single(replicas, data_type):
+    """Consolidate a single item."""
+
+    replicas_iter = iter(replicas)
+    kwargs = next(replicas_iter)._asdict()
+    for replica in replicas_iter:
+        for key, value in replica._asdict().items():
+            if value is None:
+                continue
+
+            if kwargs[key] is None:
+                kwargs[key] = value
+            elif kwargs[key] != value:
+                print(f"Conflict in {key}: {replica.date}, {replica.home} - "
+                      f"{replica.away}", file=sys.stderr)
+
+    return data_type(**kwargs)
+
+
+def sort_key(item):
+    """Return the sorting key for a match or fixture."""
+    utc_time = item.utc_time or datetime.datetime.max
+    return item.date, utc_time, item.home, item.away
 
 
 def row_from_match(match):
     """Return an iterable that can be used to write a match to a CSV file."""
-    replacements = {}
-    if match.utc_time is not None:
-        replacements['utc_time'] = datetools.datetime_to_iso(match.utc_time)
+    replacements = {'utc_time': time_replacement(match.utc_time, match.date)}
     if match.forfeited is not None:
         replacements['forfeited'] = int(match.forfeited)
-    return match._replace(**replacements)
+    return match._replace(**replacements)[1:]
 
 
-def consolidate(sources):
-    """Consolidate and store all seasons from the three-points era."""
-
-    regions = set()
-    sources_by_region = collections.defaultdict(list)
-    for source in sources:
-        source_dir = paths.DATA_DIR / source.name
-        try:
-            subdirs = paths.subdirs(source_dir)
-        except OSError as e:
-            print("Couldn't list subdirectories:", e, file=sys.stderr)
-            return
-
-        new_regions = {subdir.name for subdir in subdirs}
-        regions.update(new_regions)
-        for region in new_regions:
-            sources_by_region[region].append(source)
-
-    num_regions = 0
-    for region in sorted(regions):
-        consolidate_region(region, sources_by_region[region])
-        num_regions += 1
-
-    print(f"Done consolidating {num_regions} "
-          f"region{'s' if num_regions != 1 else ''}")
+def row_from_fixture(fixture):
+    """Return an iterable that can be used to write a fixture to a CSV file."""
+    utc_time_replacement = time_replacement(fixture.utc_time, fixture.date)
+    return fixture._replace(utc_time=utc_time_replacement)[1:]
 
 
-def consolidate_region(region, sources):
-    """Consolidate and store a region's seasons from the three-point era."""
-
-    target_dir = paths.CONSOLIDATED_DIR / region
-    num_seasons = 0
-
-    for source in sources:
-        # Lazy implementation for now.
-
-        source_dir = paths.DATA_DIR / source.name / region
-        try:
-            csv_paths = paths.csv_files(source_dir)
-        except OSError as e:
-            print("Couldn't list CSV files:", e, file=sys.stderr)
-            return
-
-        for source_path in csv_paths:
-            season_start = paths.extract_start_year(source_path)
-            if season_start < football.THREE_POINTS_ERA[region]:
-                continue
-
-            try:
-                target_dir.mkdir(parents=True, exist_ok=True)
-            except OSError as e:
-                print("Couldn't make target directory:", e, file=sys.stderr)
-                return
-
-            target_path = target_dir / source_path.name
-            try:
-                shutil.copy(source_path, target_path)
-            except OSError as e:
-                print("Couldn't copy CSV file:", e, file=sys.stderr)
-                return
-
-            num_seasons += 1
-
-        break
-
-    print(f"Consolidated {num_seasons} "
-          f"season{'s' if num_seasons != 1 else ''} in {region}")
+def time_replacement(utc_time, date):
+    """Return a formatted string."""
+    if utc_time is None:
+        return None
+    if utc_time.date() == date:
+        return datetools.datetime_to_time_str(utc_time)
+    return datetools.datetime_to_iso(utc_time)
 
 
 def main():
-    """Fetch the data."""
-    for source in storing.sources:
-        store_all_as_csv(source)
-    consolidate(storing.sources)
+    """Consolidate the data."""
+    consolidate(sources.SOURCES)
 
 
 if __name__ == '__main__':

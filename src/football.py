@@ -2,7 +2,10 @@
 
 
 import datetime
+import functools
 import typing
+
+import datetools
 
 
 # We assume that all matches start at this local time at the earliest, if the
@@ -10,6 +13,9 @@ import typing
 EARLIEST_START = datetime.time(9)
 
 LATEST_START = datetime.time.max
+
+SEASON_START_DATE = 7, 1    # Earliest start date for summer-to-summer seasons,
+                            # with a few days in hand.
 
 THREE_POINTS_ERA = {
     'argentina': 1995,
@@ -19,6 +25,7 @@ THREE_POINTS_ERA = {
     'china': 1995,
     'denmark': 1995,
     'england': 1981,
+    'europe': 2013,
     'finland': 1991,
     'france': 1994,      # Also in 1988-89.
     'germany': 1995,
@@ -41,7 +48,7 @@ THREE_POINTS_ERA = {
     'usa': 1996,
 }
 
-LEAGUES = {
+LEAGUE_NAMES = {
     'argentina': ['primera'],
     'austria': ['bundesliga'],
     'belgium': ['1st-league'],
@@ -73,15 +80,57 @@ LEAGUES = {
 }
 
 
+class Competition(typing.NamedTuple):
+    """A football competition."""
+    region: str
+    name: str
+
+
+class Season(typing.NamedTuple):
+    """A season of a competition."""
+
+    start: int
+    ends_following_year: bool = False
+
+    @property
+    def end(self):
+        """The year when the season ends."""
+        if self.ends_following_year:
+            return self.start + 1
+        return self.start
+
+    def __str__(self):
+        if self.start == self.end:
+            return str(self.start)
+        return f'{self.start}-{self.end % 100 :02}'
+
+    @classmethod
+    def from_str(cls, season_str):
+        """Return the corresponding season."""
+
+        start_str, sep, end_str = season_str.partition('-')
+        start = int(start_str)
+
+        if not sep:
+            return cls(start)
+
+        if int(end_str) != (start + 1) % 100:
+            raise ValueError(f"weird season string {season_str!r}")
+        return cls(start, ends_following_year=True)
+
+
 class Match(typing.NamedTuple):
     """A football match."""
 
+    competition: Competition
     date: datetime.date    # Local date.
+    season: Season
     home: str
     away: str
     home_goals: int
     away_goals: int
 
+    utc_time: datetime.datetime = None
     home_half_time: int = None
     away_half_time: int = None
     home_shots: int = None
@@ -104,7 +153,7 @@ class Match(typing.NamedTuple):
     away_yellow_no_red: int = None
     home_red: int = None
     away_red: int = None
-    utc_time: datetime.datetime = None
+    stage: str = None
     forfeited: bool = None
 
     @property
@@ -113,17 +162,22 @@ class Match(typing.NamedTuple):
         return self.home_goals, self.away_goals
 
 
-class MatchRecord(typing.NamedTuple):
-    """A football match record with contextualizing data."""
-    match: Match
-    region: str
-    competition: str
-    season: str
+class Fixture(typing.NamedTuple):
+    """A scheduled football match."""
 
-    @property
-    def date(self):
-        """The date on which the match took place."""
-        return self.match.date
+    competition: Competition
+    date: datetime.date    # Local date.
+    utc_time: datetime.datetime
+    season: Season
+    stage: str
+    home: str
+    away: str
+
+    @classmethod
+    def from_match(cls, match):
+        """Return a Fixture, given a match."""
+        return cls(match.competition, match.date, match.utc_time, match.season,
+                   match.stage, match.home, match.away)
 
 
 def result(score):
@@ -134,3 +188,43 @@ def result(score):
     if home < away:
         return '2'
     return 'X'
+
+
+@functools.lru_cache()
+def leagues(region):
+    """Return a list of leagues."""
+    return [Competition(region, name) for name in LEAGUE_NAMES[region]]
+
+
+def current_season():
+    """Return the latest season (summer-to-summer)."""
+    return Season(latest_season_start(), ends_following_year=True)
+
+
+def latest_season_start():
+    """Return the year in which the latest season (summer-to-summer) starts.
+
+    Switches to the next season with a few days in hand."""
+
+    now = datetools.canonical_now()
+    if (now.month, now.day) >= SEASON_START_DATE:
+        return now.year
+    return now.year - 1
+
+
+@functools.lru_cache()
+def league_size(competition):
+    """Return a mapping from leagues to number of teams."""
+    return {
+        Competition('england', 'premier'): 20,
+        Competition('germany', 'bundesliga'): 18,
+    }[competition]
+
+
+@functools.lru_cache()
+def num_matches(competition):
+    """Return a mapping from leagues to number of teams."""
+    return {
+        Competition('england', 'premier'): 38 * 10,
+        Competition('germany', 'bundesliga'): 34 * 9,
+    }[competition]
