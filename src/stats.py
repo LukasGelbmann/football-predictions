@@ -27,7 +27,7 @@ def print_region_stats(region, matches_by_competition):
         print_stats(region.title(), all_matches)
 
     for competition, matches in matches_by_competition.items():
-        print_stats(competition, matches, level=2)
+        print_stats(competition.name, matches, level=2)
 
 
 def print_stats(title, matches, level=1):
@@ -120,11 +120,10 @@ def main():
 
     matches_by_competition = collections.defaultdict(dict)
     all_matches = []
-    for region in data.regions():
-        for competition in data.competitions(region):
-            matches = list(data.competition_matches(region, competition))
-            matches_by_competition[region][competition] = matches
-            all_matches.extend(matches)
+    for competition in data.competitions():
+        matches = list(data.competition_matches(competition))
+        matches_by_competition[competition.region][competition] = matches
+        all_matches.extend(matches)
 
     print_stats('Overall', all_matches)
     print_score_frequencies(all_matches)

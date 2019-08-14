@@ -14,7 +14,9 @@ import sys
 import data
 import datetools
 import football
+import predictors
 import prediction
+import probtools
 
 
 DEFAULT_P = 0.005
@@ -28,10 +30,10 @@ MAX_DURATION = datetime.timedelta(hours=3)
 ONE_DAY = datetime.timedelta(1)
 
 
-def print_evaluation(predictor, all_records, prediction_start):
+def print_evaluation(predictor, all_matches, prediction_start):
     """Evaluate a predictor.
 
-    `all_records` must be sorted ascending by date."""
+    `all_matches` must be sorted ascending by date."""
 
     print(f'# Predictor {predictor.name!r} #')
     print()
@@ -43,19 +45,20 @@ def print_evaluation(predictor, all_records, prediction_start):
     result_counts = collections.Counter()
 
     # 3 days: yesterday, today, tomorrow.  By latest end date / earliest start.
-    records_by_end_date = collections.deque([[], [], []], maxlen=3)
-    encounters_by_start_date = collections.deque([[], [], []], maxlen=3)
+    matches_by_end_date = collections.deque([[], [], []], maxlen=3)
+    fixtures_by_start_date = collections.deque([[], [], []], maxlen=3)
 
     correct_categories = 0
     correct_results = 0
 
     def get_scores():
-        """Pop some encounters, let the predictor predict, then evaluate it."""
+        """Pop some fixtures, let the predictor predict, then evaluate it."""
         nonlocal correct_categories
         nonlocal correct_results
-        for encounter, correct_category in encounters_by_start_date.popleft():
-            probabilities = predictor.predict(encounter)
-            if not is_probability_distribution(probabilities.values()):
+        fixtures_list = fixtures_by_start_date.popleft()
+        for fixture, correct_category in fixtures_list:
+            probabilities = predictor.predict(fixture)
+            if not probtools.is_distribution(probabilities.values()):
                 raise ValueError("invalid probability distribution")
             probability = probabilities[correct_category]
             score = math.log(probability) if probability > 0 else -math.inf
@@ -77,26 +80,27 @@ def print_evaluation(predictor, all_records, prediction_start):
                 correct_results += 1
 
     previous_today = None
-    for record in all_records:
-        today = record.date
+    for match in all_matches:
+        today = match.date
         if previous_today is None:
             previous_today = today
 
         while previous_today < today:
             get_scores()
-            encounters_by_start_date.append([])
+            fixtures_by_start_date.append([])
 
-            for stored_record in records_by_end_date.popleft():
-                predictor.feed_record(stored_record)
-            records_by_end_date.append([])
+            for stored_match in matches_by_end_date.popleft():
+                predictor.feed_match(stored_match)
+            matches_by_end_date.append([])
 
             previous_today += ONE_DAY
 
-        earliest_start, latest_end = earliest_latest(record)
+        earliest_start, latest_end = earliest_latest(match)
         start_diff = (earliest_start - today).days
         if not -1 <= start_diff <= 1:
             print(f"Weird start date: expected {today} +/- 1 day, got "
                   f"{earliest_start}.", file=sys.stderr)
+            exit()
             continue
         end_diff = (latest_end - today).days
         if not -1 <= end_diff <= 1:
@@ -105,14 +109,15 @@ def print_evaluation(predictor, all_records, prediction_start):
             continue
 
         if earliest_start >= prediction_start:
-            element = prediction.encounter(record), prediction.category(record)
-            encounters_by_start_date[start_diff + 1].append(element)
-        records_by_end_date[end_diff + 1].append(record)
+            fixture = football.Fixture.from_match(match)
+            element = fixture, prediction.category(match)
+            fixtures_by_start_date[start_diff + 1].append(element)
+        matches_by_end_date[end_diff + 1].append(match)
 
-    while encounters_by_start_date or records_by_end_date:
+    while fixtures_by_start_date or matches_by_end_date:
         get_scores()
-        for stored_record in records_by_end_date.popleft():
-            predictor.feed_record(stored_record)
+        for match in matches_by_end_date.popleft():
+            predictor.feed_match(match)
 
     factor = math.log(prediction.num_categories())
     points = statistics.mean(all_scores) / factor + 1
@@ -154,21 +159,17 @@ def print_evaluation(predictor, all_records, prediction_start):
     print()
 
 
-def is_probability_distribution(values):
-    """Return True if `values` is a valid probability distribution."""
-    return math.isclose(sum(values), 1) and all(x >= 0 for x in values)
-
-
-def earliest_latest(record):
+def earliest_latest(match):
     """Return the earliest start date and latest end date in UTC."""
 
-    utc_time = record.match.utc_time
+    region = match.competition.region
+
+    utc_time = match.utc_time
     if utc_time is not None:
         earliest_utc_start = utc_time
         latest_utc_end = utc_time + MAX_DURATION
     else:
-        date = record.date
-        region = record.region
+        date = match.date
         tzinfo = datetools.TIMEZONES[region]
 
         local_time_early = datetime.datetime.combine(
@@ -200,31 +201,19 @@ def earliest_latest(record):
 def get_bias_str(average_prob, count, num_predictions, p=DEFAULT_P):
     """Return a string describing the bias, after doing a hypothesis test."""
     true_mean = count / num_predictions
-    if binomial_cdf(count, num_predictions, average_prob) < p / 2:
+    if probtools.binomial_cdf(count, num_predictions, average_prob) < p / 2:
         return f"overestimate: reality={true_mean:.2%}"
-    if 1 - binomial_cdf(count - 1, num_predictions, average_prob) < p / 2:
+    if (1 - probtools.binomial_cdf(count - 1, num_predictions, average_prob)
+            < p / 2):
         return f"underestimate: reality={true_mean:.2%}"
     return ''
 
 
-def binomial_cdf(x, n, p):
-    """Return the cumulative distribution of a binomial distribution."""
-    # See https://stackoverflow.com/a/45869209
-    result = 0
-    b = 0
-    for k in range(x+1):
-        if k > 0:
-            b += math.log(n-k+1) - math.log(k)
-        log_pmf_k = b + k * math.log(p) + (n-k) * math.log(1-p)
-        result += math.exp(log_pmf_k)
-    return result
-
-
 def main():
     """Evaluate all predictors."""
-    all_records = data.all_records()
-    for predictor in prediction.get_predictors():
-        print_evaluation(predictor, all_records, datetime.date(2016, 7, 20))
+    matches = data.matches()
+    for predictor in predictors.get_all():
+        print_evaluation(predictor, matches, datetime.date(2016, 7, 20))
 
 
 if __name__ == '__main__':

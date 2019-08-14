@@ -1,39 +1,32 @@
-#!/usr/bin/env python3
-
-"""Script to make predictions in the result prediction game.
-
-This script requires Python 3.6 or higher."""
+"""Resources to play in the result prediction game."""
 
 
 import sys
 
 import data
 import football
-import evaluate
-import prediction_zone
-import prediction
+from games import prediction_zone
+import predictors
+import probtools
 import simulate
 
 
-NUM_PREDICTIONS = 10
-
-
-def make_predictions(records, encounters,
-                     get_predictor=prediction.strength_model.Predictor):
+def make_predictions(matches, fixtures, predictor):
     """Make some predictions and upload them."""
 
-    predictor = get_predictor()
-    for record in records:
-        predictor.feed_record(record)
+    for match in matches:
+        predictor.feed_match(match)
 
-    category_to_score = simulate.get_category_to_score(records)
+    category_to_score = simulate.get_category_to_score(matches)
 
-    for encounter in encounters:
-        probabilities = predictor.predict(encounter)
+    for fixture in fixtures:
+        probabilities = predictor.predict(fixture)
         score_probabilities = get_score_probabilities(probabilities,
                                                       category_to_score)
-        predicted_score = predict_score(score_probabilities)
-        prediction_zone.predict_score(encounter, predicted_score)
+        home, away = predicted_score = predict_score(score_probabilities)
+        print(f"Prediction: {fixture.date}, {fixture.home} {home} - "
+              f"{away} {fixture.away}", file=sys.stderr)
+        prediction_zone.predict_score(fixture, predicted_score)
 
 
 def get_score_probabilities(probabilities, category_to_score):
@@ -43,7 +36,7 @@ def get_score_probabilities(probabilities, category_to_score):
         scores = category_to_score[category]
         for score, score_probability in scores.items():
             score_probabilities[score] = probability * score_probability
-    if not evaluate.is_probability_distribution(score_probabilities.values()):
+    if not probtools.is_distribution(score_probabilities.values()):
         print("Fishy probabilities.", file=sys.stderr)
     return score_probabilities
 
@@ -66,20 +59,23 @@ def predict_score(score_probabilities):
     return max(score_probabilities, key=expected_points)
 
 
+def play():
+    """Make the next predictions."""
+
+    pairs = [(football.Competition('england', 'premier'), 10),
+             (football.Competition('germany', 'bundesliga'), 9)]
+    matches = data.matches()
+
+    for competition, num_predictions in pairs:
+        fixtures = list(data.competition_fixtures(competition))
+        next_fixtures = fixtures[:num_predictions]
+        predictor = predictors.strengths.Predictor()
+        make_predictions(matches, next_fixtures, predictor)
+
+
 def main():
-    """Buy sets and update orders."""
-
-    region = 'england'
-    competition = 'premier'
-    season = '2019-20'
-
-    # prediction_zone.download_calendar(region, competition, season)
-
-    records = data.all_records()
-    encounters = list(data.season_encounters(region, competition, season))
-    next_encounters = encounters[:NUM_PREDICTIONS]
-
-    make_predictions(region, competition, season, records, next_encounters)
+    """Play in the result prediction game."""
+    play()
 
 
 if __name__ == '__main__':
