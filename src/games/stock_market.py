@@ -7,9 +7,9 @@ import sys
 
 import data
 import football
-from games import prediction_zone
 import predictors
 import simulate
+from games import prediction_zone
 
 
 NUM_SIMULATIONS = 400
@@ -18,12 +18,48 @@ ORDER_SIZE = 999
 CASH_TARGET = 150000
 
 VALUES = {
-    football.Competition('england', 'premier'):
-        [1000, 800, 650, 550, 450, 400, 360, 330, 300, 280, 260, 240, 220, 210,
-         200, 190, 180, 120, 110, 100],
-    football.Competition('germany', 'bundesliga'):
-        [1000, 800, 650, 550, 450, 400, 360, 320, 290, 260, 240, 220, 200, 190,
-         180, 140, 110, 100],
+    football.Competition('england', 'premier'): [
+        1000,
+        800,
+        650,
+        550,
+        450,
+        400,
+        360,
+        330,
+        300,
+        280,
+        260,
+        240,
+        220,
+        210,
+        200,
+        190,
+        180,
+        120,
+        110,
+        100,
+    ],
+    football.Competition('germany', 'bundesliga'): [
+        1000,
+        800,
+        650,
+        550,
+        450,
+        400,
+        360,
+        320,
+        290,
+        260,
+        240,
+        220,
+        200,
+        190,
+        180,
+        140,
+        110,
+        100,
+    ],
 }
 
 
@@ -56,8 +92,7 @@ def get_team_values(matches, fixtures, played, competition, get_predictor):
     totals = collections.defaultdict(int)
     for i in range(NUM_SIMULATIONS):
         print(f"# Simulation {i} #", file=sys.stderr)
-        table = simulate.table(matches, fixtures, played, competition,
-                               get_predictor())
+        table = simulate.table(matches, fixtures, played, competition, get_predictor())
         values = dict(zip(table, VALUES[competition]))
         for team, value in values.items():
             totals[team] += value
@@ -78,8 +113,10 @@ def update_orders(competition, season, team_values):
 
 def print_team_values(team_values):
     """Print the recommended overall prediction."""
+
     def key(team):
         return -team_values[team], team
+
     teams = sorted(team_values, key=key)
     for team in teams:
         print(f"{team_values[team]:4.0f} {team}")
@@ -89,19 +126,24 @@ def play():
     """Buy sets and update orders."""
 
     season = football.current_season()
-    competitions = [football.Competition('england', 'premier'),
-                    football.Competition('germany', 'bundesliga')]
+    competitions = [
+        football.Competition('england', 'premier'),
+        football.Competition('germany', 'bundesliga'),
+    ]
     matches = data.matches()
     get_predictor = predictors.strengths.Predictor
 
     for competition in competitions:
         buy_sets(competition, season)
         fixtures = list(data.season_fixtures(competition, season))
-        played = [match for match in matches
-                  if (match.competition == competition
-                      and match.season == season)]
-        team_values = get_team_values(matches, fixtures, played, competition,
-                                      get_predictor)
+        played = [
+            match
+            for match in matches
+            if (match.competition == competition and match.season == season)
+        ]
+        team_values = get_team_values(
+            matches, fixtures, played, competition, get_predictor
+        )
         print_team_values(team_values)
         update_orders(competition, season, team_values)
 

@@ -14,8 +14,8 @@ import sys
 import data
 import datetools
 import football
-import predictors
 import prediction
+import predictors
 import probtools
 
 
@@ -74,8 +74,7 @@ def print_evaluation(predictor, all_matches, prediction_start):
             category_guess = max(probabilities, key=probabilities.get)
             if category_guess == correct_category:
                 correct_categories += 1
-            result_guess = max(result_probabilities,
-                               key=result_probabilities.get)
+            result_guess = max(result_probabilities, key=result_probabilities.get)
             if result_guess == football.result(correct_category):
                 correct_results += 1
 
@@ -98,14 +97,18 @@ def print_evaluation(predictor, all_matches, prediction_start):
         earliest_start, latest_end = earliest_latest(match)
         start_diff = (earliest_start - today).days
         if not -1 <= start_diff <= 1:
-            print(f"Weird start date: expected {today} +/- 1 day, got "
-                  f"{earliest_start}.", file=sys.stderr)
+            print(
+                f"Weird start date: expected {today} +/- 1 day, got {earliest_start}.",
+                file=sys.stderr,
+            )
             exit()
             continue
         end_diff = (latest_end - today).days
         if not -1 <= end_diff <= 1:
-            print(f"Weird end date: expected {today} +/- 1 day, got "
-                  f"{latest_end}.", file=sys.stderr)
+            print(
+                f"Weird end date: expected {today} +/- 1 day, got {latest_end}.",
+                file=sys.stderr,
+            )
             continue
 
         if earliest_start >= prediction_start:
@@ -132,8 +135,9 @@ def print_evaluation(predictor, all_matches, prediction_start):
     print(f"Guessed result (1/X/2): {result_ratio:.2%}")
     print()
 
-    print("## Mean prediction and deviations from true percentage "
-          f"(p<{DEFAULT_P:.1%}) ##")
+    print(
+        f"## Mean prediction and deviations from true percentage (p<{DEFAULT_P:.1%}) ##"
+    )
 
     for result in '1', 'X', '2':
         average_prob = total_result_probabilities[result] / num_predictions
@@ -173,12 +177,12 @@ def earliest_latest(match):
         tzinfo = datetools.TIMEZONES[region]
 
         local_time_early = datetime.datetime.combine(
-            date, football.EARLIEST_START, tzinfo)
+            date, football.EARLIEST_START, tzinfo
+        )
         earliest_start = local_time_early - datetools.MAX_TIME_DIFF[region]
         earliest_utc_start = datetools.to_utc(earliest_start)
 
-        local_time_late = datetime.datetime.combine(
-            date, football.LATEST_START, tzinfo)
+        local_time_late = datetime.datetime.combine(date, football.LATEST_START, tzinfo)
         latest_end = local_time_late + MAX_DURATION
         latest_utc_end = datetools.to_utc(latest_end)
 
@@ -197,14 +201,12 @@ def earliest_latest(match):
     return earliest_start, latest_end
 
 
-
 def get_bias_str(average_prob, count, num_predictions, p=DEFAULT_P):
     """Return a string describing the bias, after doing a hypothesis test."""
     true_mean = count / num_predictions
     if probtools.binomial_cdf(count, num_predictions, average_prob) < p / 2:
         return f"overestimate: reality={true_mean:.2%}"
-    if (1 - probtools.binomial_cdf(count - 1, num_predictions, average_prob)
-            < p / 2):
+    if 1 - probtools.binomial_cdf(count - 1, num_predictions, average_prob) < p / 2:
         return f"underestimate: reality={true_mean:.2%}"
     return ''
 

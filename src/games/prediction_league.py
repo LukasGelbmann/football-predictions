@@ -7,9 +7,9 @@ import sys
 
 import data
 import football
-from games import prediction_zone
 import predictors
 import probtools
+from games import prediction_zone
 
 
 def make_predictions(matches, fixtures, competition, predictor):
@@ -27,10 +27,12 @@ def make_predictions(matches, fixtures, competition, predictor):
     for fixture in fixtures:
         probabilities = predictor.predict(fixture)
         result_probabilities = get_result_probabilities(probabilities)
-        predicted_result = get_prediction(result_probabilities, fixture,
-                                          league_size)
-        print(f"Prediction: {fixture.date}, {fixture.home} - {fixture.away}, "
-              f"{predicted_result}", file=sys.stderr)
+        predicted_result = get_prediction(result_probabilities, fixture, league_size)
+        print(
+            f"Prediction: {fixture.date}, {fixture.home} - {fixture.away}, "
+            f"{predicted_result}",
+            file=sys.stderr,
+        )
         prediction_zone.predict_result(fixture, predicted_result)
 
 
@@ -58,8 +60,10 @@ def get_prediction(result_probabilities, fixture, league_size):
 def play():
     """Make the next predictions."""
 
-    pairs = [(football.Competition('england', 'premier'), 10),
-             (football.Competition('germany', 'bundesliga'), 9)]
+    pairs = [
+        (football.Competition('england', 'premier'), 10),
+        (football.Competition('germany', 'bundesliga'), 9),
+    ]
     matches = data.matches()
 
     for competition, num_predictions in pairs:

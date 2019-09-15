@@ -24,8 +24,8 @@ def competitions():
 
     try:
         csv_paths = paths.csv_files(paths.CONSOLIDATED_DIR)
-    except OSError as e:
-        print("Couldn't list CSV files:", e, file=sys.stderr)
+    except OSError as exc:
+        print("Couldn't list CSV files:", exc, file=sys.stderr)
         return []
 
     def key(competition):
@@ -63,8 +63,8 @@ def get_fields(path, data_type):
 
     try:
         file = open(path, encoding='utf-8', newline='')
-    except OSError as e:
-        print("Couldn't open CSV file:", e, file=sys.stderr)
+    except OSError as exc:
+        print("Couldn't open CSV file:", exc, file=sys.stderr)
         return
 
     with file:
@@ -72,8 +72,7 @@ def get_fields(path, data_type):
         for fields in reader:
             new_fields = {}
             for name, value in fields.items():
-                new_fields[name] = parse_field(name, value,
-                                               new_fields.get('date'))
+                new_fields[name] = parse_field(name, value, new_fields.get('date'))
             yield new_fields
 
 

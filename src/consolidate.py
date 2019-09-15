@@ -5,8 +5,8 @@
 This script requires Python 3.6 or higher."""
 
 
-import csv
 import collections
+import csv
 import datetime
 import sys
 
@@ -26,7 +26,7 @@ def consolidate(all_sources):
 
     num_regions = len(sources_by_region)
 
-    print(f"Found {num_regions} region{'s' if num_regions != 1 else ''}.")
+    print(f"Found {num_regions} region{'s' if num_regions != 1 else ''}.", flush=True)
 
     num_competitions = 0
     for region, region_sources in sorted(sources_by_region.items()):
@@ -40,8 +40,11 @@ def consolidate(all_sources):
             consolidate_matches(competition, sources_seq)
             consolidate_fixtures(competition, sources_seq)
 
-    print(f"Done consolidating {num_competitions} "
-          f"competition{'s' if num_competitions != 1 else ''}.")
+    print(
+        f"Done consolidating {num_competitions} "
+        f"competition{'s' if num_competitions != 1 else ''}.",
+        flush=True,
+    )
 
 
 def consolidate_matches(competition, sources_iter):
@@ -52,8 +55,8 @@ def consolidate_matches(competition, sources_iter):
 
     try:
         paths.CONSOLIDATED_DIR.mkdir(exist_ok=True)
-    except OSError as e:
-        print("Couldn't make target directory:", e, file=sys.stderr)
+    except OSError as exc:
+        print("Couldn't make target directory:", exc, file=sys.stderr)
         return
 
     matches = collections.defaultdict(list)
@@ -65,13 +68,14 @@ def consolidate_matches(competition, sources_iter):
     if not matches:
         return
 
-    matches_iter = (consolidate_single(replicas, football.Match)
-                    for replicas in matches.values())
+    matches_iter = (
+        consolidate_single(replicas, football.Match) for replicas in matches.values()
+    )
 
     try:
         file = open(path, 'w', encoding='utf-8', newline='')
-    except OSError as e:
-        print("Couldn't open CSV file to write to:", e, file=sys.stderr)
+    except OSError as exc:
+        print("Couldn't open CSV file to write to:", exc, file=sys.stderr)
         return
 
     with file:
@@ -88,8 +92,8 @@ def consolidate_fixtures(competition, sources_iter):
 
     try:
         paths.CONSOLIDATED_DIR.mkdir(exist_ok=True)
-    except OSError as e:
-        print("Couldn't make target directory:", e, file=sys.stderr)
+    except OSError as exc:
+        print("Couldn't make target directory:", exc, file=sys.stderr)
         return
 
     fixtures = collections.defaultdict(list)
@@ -101,13 +105,14 @@ def consolidate_fixtures(competition, sources_iter):
     if not fixtures:
         return
 
-    fixtures_iter = (consolidate_single(replicas, football.Fixture)
-                     for replicas in fixtures.values())
+    fixtures_iter = (
+        consolidate_single(replicas, football.Fixture) for replicas in fixtures.values()
+    )
 
     try:
         file = open(path, 'w', encoding='utf-8', newline='')
-    except OSError as e:
-        print("Couldn't open CSV file for fixtures:", e, file=sys.stderr)
+    except OSError as exc:
+        print("Couldn't open CSV file for fixtures:", exc, file=sys.stderr)
         return
 
     with file:
@@ -129,8 +134,11 @@ def consolidate_single(replicas, data_type):
             if kwargs[key] is None:
                 kwargs[key] = value
             elif kwargs[key] != value:
-                print(f"Conflict in {key}: {replica.date}, {replica.home} - "
-                      f"{replica.away}", file=sys.stderr)
+                print(
+                    f"Conflict in {key}: {replica.date}, {replica.home} - "
+                    f"{replica.away}",
+                    file=sys.stderr,
+                )
 
     return data_type(**kwargs)
 

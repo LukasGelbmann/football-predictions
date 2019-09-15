@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
-"""Script to fetch historical football data from the Internet.
+"""Script to fetch historical football data from the Internet."""
 
-This script requires Python 3.6 or higher."""
+
+import pyversion
+
+pyversion.check(minimal=(3, 6))
 
 
 import sources

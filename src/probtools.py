@@ -14,9 +14,9 @@ def binomial_cdf(x, n, p):
     # See https://stackoverflow.com/a/45869209
     result = 0
     b = 0
-    for k in range(x+1):
+    for k in range(x + 1):
         if k > 0:
-            b += math.log(n-k+1) - math.log(k)
-        log_pmf_k = b + k * math.log(p) + (n-k) * math.log(1-p)
+            b += math.log(n - k + 1) - math.log(k)
+        log_pmf_k = b + k * math.log(p) + (n - k) * math.log(1 - p)
         result += math.exp(log_pmf_k)
     return result

@@ -5,10 +5,10 @@ import sys
 
 import data
 import football
-from games import prediction_zone
 import predictors
 import probtools
 import simulate
+from games import prediction_zone
 
 
 def make_predictions(matches, fixtures, predictor):
@@ -21,11 +21,13 @@ def make_predictions(matches, fixtures, predictor):
 
     for fixture in fixtures:
         probabilities = predictor.predict(fixture)
-        score_probabilities = get_score_probabilities(probabilities,
-                                                      category_to_score)
+        score_probabilities = get_score_probabilities(probabilities, category_to_score)
         home, away = predicted_score = predict_score(score_probabilities)
-        print(f"Prediction: {fixture.date}, {fixture.home} {home} - "
-              f"{away} {fixture.away}", file=sys.stderr)
+        print(
+            f"Prediction: {fixture.date}, {fixture.home} {home} - "
+            f"{away} {fixture.away}",
+            file=sys.stderr,
+        )
         prediction_zone.predict_score(fixture, predicted_score)
 
 
@@ -62,8 +64,10 @@ def predict_score(score_probabilities):
 def play():
     """Make the next predictions."""
 
-    pairs = [(football.Competition('england', 'premier'), 10),
-             (football.Competition('germany', 'bundesliga'), 9)]
+    pairs = [
+        (football.Competition('england', 'premier'), 10),
+        (football.Competition('germany', 'bundesliga'), 9),
+    ]
     matches = data.matches()
 
     for competition, num_predictions in pairs:

@@ -1,8 +1,7 @@
 """Resources related to data sources."""
 
 
-from sources import football_data
-from sources import prediction_zone
+from sources import football_data, prediction_zone
 
 
 FETCHERS = [prediction_zone.fetch]
