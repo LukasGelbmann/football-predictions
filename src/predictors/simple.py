@@ -5,11 +5,11 @@ import collections
 import datetime
 
 import datetools
-from predictors import base
 import prediction
+from predictors import base
 
 
-KEEP_MATCHES = datetime.timedelta(days=round(10*datetools.DAYS_PER_YEAR))
+KEEP_MATCHES = datetime.timedelta(days=round(10 * datetools.DAYS_PER_YEAR))
 
 
 class Predictor(base.Predictor):
@@ -33,8 +33,8 @@ class Predictor(base.Predictor):
             self.category_counts[match.competition][category] -= 1
 
         counts = self.category_counts[fixture.competition]
-        adjusted_counts = {category: max(counts[category], 1)
-                           for category in prediction.categories()}
+        adjusted_counts = {
+            category: max(counts[category], 1) for category in prediction.categories()
+        }
         total = sum(adjusted_counts.values())
-        return {category: count / total
-                for category, count in adjusted_counts.items()}
+        return {category: count / total for category, count in adjusted_counts.items()}

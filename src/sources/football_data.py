@@ -66,7 +66,7 @@ TEAM_SYNONYMS = {
         "St Pauli": "St. Pauli",
         "Stuttgart": "VfB Stuttgart",
         "Wolfsburg": "VfL Wolfsburg",
-    }
+    },
 }
 
 LEAGUE_STRS = {
@@ -102,15 +102,9 @@ EXTRA_REGIONS = {
     'usa': 'USA',
 }
 
-TEAM_FIELDS = {
-    'home': ['HomeTeam', 'Home', 'HT'],
-    'away': ['AwayTeam', 'Away', 'AT'],
-}
+TEAM_FIELDS = {'home': ['HomeTeam', 'Home', 'HT'], 'away': ['AwayTeam', 'Away', 'AT']}
 
-SCORE_FIELDS = {
-    'home_goals': ['FTHG', 'HG'],
-    'away_goals': ['FTAG', 'AG'],
-}
+SCORE_FIELDS = {'home_goals': ['FTHG', 'HG'], 'away_goals': ['FTAG', 'AG']}
 
 INT_FIELDS = {
     'home_half_time': 'HTHG',
@@ -178,8 +172,8 @@ class Source(base.Source):
             path = f'{BASE_DIR}/{season_str}/{league_str}.csv'
             try:
                 season_exists = pathlib.Path(path).is_file()
-            except OSError as e:
-                print("Couldn't check for file existence:", e, file=sys.stderr)
+            except OSError as exc:
+                print("Couldn't check for file existence:", exc, file=sys.stderr)
                 continue
 
             if season_exists:
@@ -201,8 +195,8 @@ def matches_from_csv(path, competition, season=None):
 
     try:
         file = open(path, encoding='utf-8', errors='ignore', newline='')
-    except OSError as e:
-        print("Couldn't open CSV file:", e, file=sys.stderr)
+    except OSError as exc:
+        print("Couldn't open CSV file:", exc, file=sys.stderr)
         return
 
     with file:
@@ -284,10 +278,11 @@ def match_from_fields(fields, competition, season, check_consistency=False):
                 break
 
     if kwargs.get('forfeited'):
-        print(f"Treating match as forfeited: {kwargs['date']}, "
-              f"{kwargs['home']} - {kwargs['away']} "
-              f"({kwargs['home_goals']}:{kwargs['away_goals']})",
-              file=sys.stderr)
+        print(
+            f"Treating match as forfeited: {kwargs['date']}, {kwargs['home']} "
+            f"- {kwargs['away']} ({kwargs['home_goals']}:{kwargs['away_goals']})",
+            file=sys.stderr,
+        )
 
     season_str = fields.get('Season')
     if season_str:
@@ -319,8 +314,8 @@ def date_and_utc_time(fields, region, check_plausibility=True):
             earliest_local_time = region_time.replace(tzinfo=None)
             max_time_diff = datetools.MAX_TIME_DIFF[region]
             latest_local_time = earliest_local_time + max_time_diff
-            if (earliest_local_time.date() == latest_local_time.date()
-                    and latest_local_time.time() < football.EARLIEST_START):
+            dates_match = earliest_local_time.date() == latest_local_time.date()
+            if dates_match and latest_local_time.time() < football.EARLIEST_START:
                 print_fields(fields, "Strange time to play football")
         date = region_time.date()
         return date, utc_time
@@ -381,8 +376,9 @@ def int_fields_uk():
 @functools.lru_cache()
 def kwarg_pairs():
     """Return (home, away) pairs for all match keyword argument names."""
-    kwargs_keys = (set(TEAM_FIELDS) | set(SCORE_FIELDS)
-                   | set(INT_FIELDS) | set(int_fields_uk()))
+    kwargs_keys = (
+        set(TEAM_FIELDS) | set(SCORE_FIELDS) | set(INT_FIELDS) | set(int_fields_uk())
+    )
     kwargs_keys_home = {key for key in kwargs_keys if key.startswith('home')}
     kwargs_keys_away = {key for key in kwargs_keys if key.startswith('away')}
     pairs = list(zip(sorted(kwargs_keys_home), sorted(kwargs_keys_away)))

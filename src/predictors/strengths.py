@@ -8,8 +8,8 @@ import sys
 
 import datetools
 import football
-from predictors import base
 import prediction
+from predictors import base
 
 
 HOME_ADVANTAGE = 0.43
@@ -17,7 +17,7 @@ HOME_ADVANTAGE = 0.43
 ITERATIONS = range(100)
 ITERATIONS_UPDATE = range(5)
 
-KEEP_MATCHES = datetime.timedelta(days=round(10*datetools.DAYS_PER_YEAR))
+KEEP_MATCHES = datetime.timedelta(days=round(10 * datetools.DAYS_PER_YEAR))
 
 
 class Predictor(base.Predictor):
@@ -44,13 +44,14 @@ class Predictor(base.Predictor):
         strength_diff_naive = strengths[fixture.home] - strengths[fixture.away]
         strength_diff = strength_diff_naive + HOME_ADVANTAGE
         result_probabilities = {}
-        draw = 0.29 * math.exp(-0.5 * (strength_diff*0.65)**2)
-        home = (1-draw) / (1 + math.exp(-strength_diff))
+        draw = 0.29 * math.exp(-0.5 * (strength_diff * 0.65) ** 2)
+        home = (1 - draw) / (1 + math.exp(-strength_diff))
         result_probabilities = {'1': home, 'X': draw, '2': 1 - home - draw}
         probabilities = {}
         counts = self.category_counts[fixture.competition]
-        adjusted_counts = {category: max(counts[category], 1)
-                           for category in prediction.categories()}
+        adjusted_counts = {
+            category: max(counts[category], 1) for category in prediction.categories()
+        }
         result_counts = collections.Counter()
         for category, count in adjusted_counts.items():
             result_counts[football.result(category)] += count
@@ -79,14 +80,16 @@ class Predictor(base.Predictor):
             strengths = collections.defaultdict(float)
             iterations = ITERATIONS
 
-        print(target, region, file=sys.stderr)
+        # print(target, region, file=sys.stderr)
 
         for _ in iterations:
             new_strengths = strengths.copy()
             for match in region_memory:
                 if target < match.date:
-                    print(f"Target date {target} before match date "
-                          f"{match.date}.", file=sys.stderr)
+                    print(
+                        f"Target date {target} before match date " f"{match.date}.",
+                        file=sys.stderr,
+                    )
                 goal_diff = match.home_goals - match.away_goals
                 strength_diff = strengths[match.home] - strengths[match.away]
                 change = strength_change(goal_diff, strength_diff)

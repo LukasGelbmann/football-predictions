@@ -20,8 +20,7 @@ def get_team_chances(matches, fixtures, played, competition, get_predictor):
     counters = collections.defaultdict(collections.Counter)
     for i in range(NUM_SIMULATIONS):
         print(f"# Simulation {i} #", file=sys.stderr)
-        table = simulate.table(matches, fixtures, played, competition,
-                               get_predictor())
+        table = simulate.table(matches, fixtures, played, competition, get_predictor())
         for position, team in enumerate(table, 1):
             counters[team][position] += 1
     return counters
@@ -52,18 +51,23 @@ def play():
     """Make an overall prediction and print it."""
 
     season = football.current_season()
-    competitions = [football.Competition('england', 'premier'),
-                    football.Competition('germany', 'bundesliga')]
+    competitions = [
+        football.Competition('england', 'premier'),
+        football.Competition('germany', 'bundesliga'),
+    ]
     matches = data.matches()
     get_predictor = predictors.strengths.Predictor
 
     for competition in competitions:
         fixtures = list(data.season_fixtures(competition, season))
-        played = [match for match in matches
-                  if (match.competition == competition
-                      and match.season == season)]
-        team_chances = get_team_chances(matches, fixtures, played, competition,
-                                        get_predictor)
+        played = [
+            match
+            for match in matches
+            if match.competition == competition and match.season == season
+        ]
+        team_chances = get_team_chances(
+            matches, fixtures, played, competition, get_predictor
+        )
         print_overall_prediction(team_chances)
 
 

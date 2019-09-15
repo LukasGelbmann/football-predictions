@@ -30,7 +30,7 @@ def print_region_stats(region, matches_by_competition):
         print_stats(competition.name, matches, level=2)
 
 
-def print_stats(title, matches, level=1):
+def print_stats(title, matches, level=1, record_cls=football.Match):
     """Print statistics for a set of matches."""
 
     print_title(title, level)
@@ -43,7 +43,7 @@ def print_stats(title, matches, level=1):
 
     print_result_frequencies(matches)
 
-    for name, field_type in football.Match._field_types.items():
+    for name, field_type in record_cls._field_types.items():
         if not issubclass(field_type, int) or issubclass(field_type, bool):
             continue
         values = (getattr(match, name) for match in matches)

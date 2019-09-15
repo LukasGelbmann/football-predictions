@@ -1,10 +1,18 @@
 #!/bin/sh --
 
-PROJECT_PATH=$(dirname -- "$(dirname -- "$(realpath -- "$0")")")
-SCRIPT_PATH="${PROJECT_PATH}/src/play.py"
+set -o errexit
 
-if type pypy3 >/dev/null 2>&1; then
-    pypy3 -- "${SCRIPT_PATH}" "$@"
-else
-    python3 -- "${SCRIPT_PATH}" "$@"
-fi
+REAL_PATH=$(
+    readlink -f -- "$0" 2>/dev/null ||
+    python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "$0"
+)
+SRC_PATH="$(dirname -- "$REAL_PATH")/../src"
+
+# Change to the source directory because otherwise PyPy can't always find files
+# on Cygwin.
+cd -- "$SRC_PATH"
+
+. ./fastest_python.sh
+set_python
+
+"$PYTHON" play.py "$@"

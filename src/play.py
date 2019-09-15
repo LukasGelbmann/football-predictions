@@ -8,7 +8,7 @@ This script requires Python 3.6 or higher."""
 import sys
 
 
-COMMANDS = ['result', 'market', 'league', 'overall']
+COMMANDS = ['result', 'stocks', 'league', 'overall']
 
 
 def print_help():
@@ -24,19 +24,16 @@ def print_help():
 def perform(command):
     """Perform a command."""
     if command == 'result':
-        import games.result_prediction
-        games.result_prediction.play()
-    elif command == 'market':
-        import games.stock_market
-        games.stock_market.play()
+        import games.result_prediction as game_module
+    elif command == 'stocks':
+        import games.stock_market as game_module
     elif command == 'league':
-        import games.prediction_league
-        games.prediction_league.play()
+        import games.prediction_league as game_module
     elif command == 'overall':
-        import games.overall
-        games.overall.play()
+        import games.overall as game_module
     else:
         print("Unknown command", file=sys.stderr)
+    game_module.play()
 
 
 def main():

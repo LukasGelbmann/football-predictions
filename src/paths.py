@@ -29,5 +29,4 @@ def csv_files(path, start=''):
 
     May raise an OSError."""
 
-    return sorted(item for item in path.glob(start + '*.csv')
-                  if item.is_file())
+    return sorted(item for item in path.glob(start + '*.csv') if item.is_file())

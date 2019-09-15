@@ -1,10 +1,11 @@
 """Prediction Zone data source."""
 
 
+import concurrent.futures
 import csv
+import datetime
 import functools
 import pathlib
-import os
 import re
 import sys
 import urllib.request
@@ -18,7 +19,8 @@ from sources import base
 NAME = 'prediction-zone'
 
 BASE_URL = 'https://prediction.zone/api'
-BASE_DIR = f'{paths.DATA_DIR}/{NAME}'
+BASE_DIR = paths.DATA_DIR / NAME
+UPDATED_PATH = BASE_DIR / 'updated.txt'
 
 START_YEAR = 2014
 
@@ -33,6 +35,8 @@ COMPETITION_NAMES = {
     'europe': ['champions'],
     'england': ['premier'],
 }
+
+NUM_THREADS = 3
 
 
 class Source(base.Source):
@@ -65,35 +69,12 @@ class Source(base.Source):
                 yield fixture
 
 
-def fetch(older_than=None):
-    """Fetch raw data from the Internet."""
-
-    if older_than is not None:
-        raise NotImplementedError("age check")
-
-    try:
-        os.makedirs(BASE_DIR, exist_ok=True)
-    except OSError as e:
-        print("Couldn't make directory for downloads:", e, file=sys.stderr)
-        return
-
-    final_year = football.latest_season_start()
-    for competition_str in COMPETITION_STRS.values():
-        for season_str in season_strs(final_year):
-            name = competition_str + season_str
-            url = f'{BASE_URL}/{name}/get_matches?content=tnmr&all'
-            path = f'{BASE_DIR}/{name}.csv'
-            try:
-                urllib.request.urlretrieve(url, path)
-            except OSError as e:
-                print("Couldn't fetch results:", e, file=sys.stderr)
-
-
 def get_fields(competition):
     """Yield a (fields, season) pair for each row for a competition."""
 
-    filepaths = paths.csv_files(pathlib.Path(BASE_DIR),
-                                start=COMPETITION_STRS[competition])
+    filepaths = paths.csv_files(
+        pathlib.Path(BASE_DIR), start=COMPETITION_STRS[competition]
+    )
     seasons = {path: extract_season(path) for path in filepaths}
     filepaths.sort(key=seasons.get)
     region = competition.region
@@ -101,14 +82,16 @@ def get_fields(competition):
     for path in filepaths:
         season = seasons[path]
         if season.start < football.THREE_POINTS_ERA[region]:
-            print(f"Season {season} was before the three-points era in "
-                  f"{region}.", file=sys.stderr)
+            print(
+                f"Season {season} was before the three-points era in {region}.",
+                file=sys.stderr,
+            )
             continue
 
         try:
             file = open(path, encoding='utf-8', newline='')
-        except OSError as e:
-            print("Couldn't open CSV file:", e, file=sys.stderr)
+        except OSError as exc:
+            print("Couldn't open CSV file:", exc, file=sys.stderr)
             continue
 
         with file:
@@ -125,15 +108,16 @@ def match_from_fields(fields, competition, season):
 
     if not home_goals_str or not away_goals_str:
         if home_goals_str or away_goals_str:
-            print(f"Only half a score: {kwargs['date']}, {home} - {away}",
-                  file=sys.stderr)
+            print(
+                f"Only half a score: {kwargs['date']}, {home} - {away}", file=sys.stderr
+            )
         return None
 
     return football.Match(competition, **kwargs)
 
 
 def fixture_from_fields(fields, competition, season):
-    """Return the corresponding match."""
+    """Return the corresponding fixture."""
 
     *_, home_goals_str, away_goals_str = fields
 
@@ -154,8 +138,9 @@ def get_kwargs(fields, competition, season):
     kwargs['date'] = datetools.date_from_utc_time(utc_time, competition.region)
 
     if '\ufeff' in stage:
-        print(f"Contains BOM in stage: {kwargs['date']}, {home} - {away}",
-              file=sys.stderr)
+        print(
+            f"Contains BOM in stage: {kwargs['date']}, {home} - {away}", file=sys.stderr
+        )
         stage = stage.replace('\ufeff', '')
     match = re.fullmatch(r"Round (\d+)", stage)
     if match:
@@ -189,11 +174,91 @@ def extract_season(path):
     return football.Season(start, ends_following_year=True)
 
 
+def fetch(older_than=None):
+    """Fetch raw data from the Internet."""
+
+    if older_than is not None:
+        raise NotImplementedError("age check")
+
+    try:
+        BASE_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        print("Couldn't make directory for downloads:", exc, file=sys.stderr)
+        return
+
+    updated = last_updated()
+    start_year = max(football.latest_season_start(before=updated), START_YEAR)
+    final_year = football.latest_season_start()
+    now = datetools.canonical_now()
+
+    with concurrent.futures.ThreadPoolExecutor(NUM_THREADS) as executor:
+        futures = []
+        for competition_str in COMPETITION_STRS.values():
+            for season_str in season_strs(start_year, final_year + 1):
+                name = competition_str + season_str
+                url = f'{BASE_URL}/{name}/get_matches?content=tnmr&all'
+                filename = name + '.csv'
+                path = BASE_DIR / filename
+                future = executor.submit(fetch_url, url, path)
+                futures.append(future)
+
+        for future in futures:
+            future.result()
+
+    write_updated(now)
+
+
+def fetch_url(url, path):
+    """Fetch a remote file."""
+    print("Fetching:", url, file=sys.stderr)
+    try:
+        urllib.request.urlretrieve(url, path)
+    except OSError as exc:
+        print("Couldn't fetch results:", exc, file=sys.stderr)
+
+
 @functools.lru_cache()
-def season_strs(final_year):
+def season_strs(start_year, stop_year):
     """Return all valid season strings."""
     result = []
-    for year in range(START_YEAR, final_year + 1):
+    for year in range(start_year, stop_year):
         season_str = f'{year % 100 :02}{(year + 1) % 100 :02}'
         result.append(season_str)
     return result
+
+
+def last_updated():
+    """Return the UTC datetime when this was last fetched."""
+
+    try:
+        file = open(UPDATED_PATH, encoding='utf-8')
+    except FileNotFoundError:
+        return datetime.datetime.min
+    except OSError as exc:
+        print("Couldn't get updated time:", exc, file=sys.stderr)
+        return datetime.datetime.min
+
+    with file:
+        try:
+            return datetools.datetime_from_iso(file.read().strip())
+        except ValueError:
+            return datetime.datetime.min
+
+
+def write_updated(now):
+    """Write the UTC datetime when this was last fetched."""
+
+    try:
+        UPDATED_PATH.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        print("Couldn't make directory for timestamp:", exc, file=sys.stderr)
+        return
+
+    try:
+        file = open(UPDATED_PATH, 'w', encoding='utf-8', newline='\n')
+    except OSError as exc:
+        print("Couldn't write updated time:", type(exc), exc, file=sys.stderr)
+        return
+
+    with file:
+        print(datetools.datetime_to_iso(now), file=file)

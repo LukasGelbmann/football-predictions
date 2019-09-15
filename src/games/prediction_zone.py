@@ -13,8 +13,10 @@ import paths
 
 BASE_URL = 'https://prediction.zone/api'
 
-COMPETITIONS = {football.Competition('england', 'premier'): 'premierleague',
-                football.Competition('germany', 'bundesliga'): 'bundesliga'}
+COMPETITIONS = {
+    football.Competition('england', 'premier'): 'premierleague',
+    football.Competition('germany', 'bundesliga'): 'bundesliga',
+}
 
 
 def buy(competition, season, team, price, limit):
@@ -30,8 +32,13 @@ def sell(competition, season, team, price, limit):
 def place_order(competition, season, team, order, price, limit):
     """Place an order online."""
     name = season_name(competition, season)
-    data = {'team': team, 'order': order, 'price': price, 'limit': limit,
-            'expires': 'm'}
+    data = {
+        'team': team,
+        'order': order,
+        'price': price,
+        'limit': limit,
+        'expires': 'm',
+    }
     post_to(f'stockmarket2/{name}/order', data)
 
 
@@ -73,16 +80,19 @@ def predict_score(fixture, score):
     """Place a score prediction."""
     name = season_name(fixture.competition, fixture.season)
     home_goals, away_goals = score
-    data = {'hometeam': fixture.home, 'awayteam': fixture.away,
-            'homegoals': home_goals, 'awaygoals': away_goals}
+    data = {
+        'hometeam': fixture.home,
+        'awayteam': fixture.away,
+        'homegoals': home_goals,
+        'awaygoals': away_goals,
+    }
     post_to(f'resultprediction/{name}/match', data)
 
 
 def predict_result(fixture, result):
     """Place a result prediction."""
     name = season_name(fixture.competition, fixture.season)
-    data = {'hometeam': fixture.home, 'awayteam': fixture.away,
-            'prediction': result}
+    data = {'hometeam': fixture.home, 'awayteam': fixture.away, 'prediction': result}
     post_to(f'predictionleague/{name}/match', data)
 
 
@@ -108,8 +118,9 @@ def post_to(endpoint, data=None):
     with response:
         code = response.getcode()
         if code != 200:
-            print(f"Got HTTP status code {code} from endpoint {endpoint}",
-                  file=sys.stderr)
+            print(
+                f"Got HTTP status code {code} from endpoint {endpoint}", file=sys.stderr
+            )
 
 
 def post_and_retrieve(endpoint, data=None):
@@ -127,8 +138,9 @@ def post_and_retrieve(endpoint, data=None):
     with response:
         code = response.getcode()
         if code != 200:
-            print(f"Got HTTP status code {code} from endpoint {endpoint}",
-                  file=sys.stderr)
+            print(
+                f"Got HTTP status code {code} from endpoint {endpoint}", file=sys.stderr
+            )
         return response.read()
 
 
@@ -154,8 +166,8 @@ def credentials():
 
     try:
         file = open(path, encoding='utf-8')
-    except OSError as e:
-        print("Couldn't open credentials file:", e, file=sys.stderr)
+    except OSError as exc:
+        print("Couldn't open credentials file:", exc, file=sys.stderr)
         raise
 
     with file:

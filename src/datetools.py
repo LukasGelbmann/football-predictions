@@ -71,10 +71,13 @@ MAX_TIMEZONE_DIFF = {
     'usa': 6,
 }
 
-TIMEZONES = {region: datetime.timezone(datetime.timedelta(hours=offset))
-             for region, offset in UTC_OFFSETS.items()}
-MAX_TIME_DIFF = {region: datetime.timedelta(hours=diff)
-                 for region, diff in MAX_TIMEZONE_DIFF.items()}
+TIMEZONES = {
+    region: datetime.timezone(datetime.timedelta(hours=offset))
+    for region, offset in UTC_OFFSETS.items()
+}
+MAX_TIME_DIFF = {
+    region: datetime.timedelta(hours=diff) for region, diff in MAX_TIMEZONE_DIFF.items()
+}
 
 ISO_DATETIME_FORMAT = '%Y-%m-%d %H:%M'
 TIME_FORMAT = '%H:%M'
@@ -147,5 +150,5 @@ def date_from_utc_time(utc_time, region):
 
 @functools.lru_cache()
 def canonical_now():
-    """Return a datetime object standing for now, unchanging."""
-    return datetime.datetime.now()
+    """Return a datetime object standing for now in UTC, unchanging."""
+    return datetime.datetime.utcnow()

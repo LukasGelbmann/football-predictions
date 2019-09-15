@@ -14,24 +14,24 @@ EARLIEST_START = datetime.time(9)
 
 LATEST_START = datetime.time.max
 
-SEASON_START_DATE = 7, 1    # Earliest start date for summer-to-summer seasons,
-                            # with a few days in hand.
+# Earliest start date for summer-to-summer seasons, with a few days in hand.
+SEASON_START_DATE = 7, 1
 
 THREE_POINTS_ERA = {
     'argentina': 1995,
     'austria': 1995,
-    'belgium': 1995,     # Second division was 1993.
+    'belgium': 1995,  # Second division was 1993.
     'brazil': 1995,
     'china': 1995,
     'denmark': 1995,
     'england': 1981,
     'europe': 2013,
     'finland': 1991,
-    'france': 1994,      # Also in 1988-89.
+    'france': 1994,  # Also in 1988-89.
     'germany': 1995,
     'greece': 1992,
-    'ireland': 1993,     # Also in 1982-83.
-    'italy': 1994,       # Serie A and Serie B.
+    'ireland': 1993,  # Also in 1982-83.
+    'italy': 1994,  # Serie A and Serie B.
     'japan': 1988,
     'mexico': 1995,
     'netherlands': 1995,
@@ -40,7 +40,7 @@ THREE_POINTS_ERA = {
     'portugal': 1995,
     'romania': 1994,
     'russia': 1995,
-    'scotland': 1994,    # Earlier for non-professional leagues.
+    'scotland': 1994,  # Earlier for non-professional leagues.
     'spain': 1995,
     'sweden': 1990,
     'switzerland': 1995,
@@ -55,8 +55,7 @@ LEAGUE_NAMES = {
     'brazil': ['serie-a'],
     'china': ['super-league'],
     'denmark': ['superliga'],
-    'england': ['premier', '2nd-league', '3rd-league', '4th-league',
-                '5th-league'],
+    'england': ['premier', '2nd-league', '3rd-league', '4th-league', '5th-league'],
     'finland': ['veikkausliiga'],
     'france': ['1st-league', '2nd-league'],
     'germany': ['bundesliga', 'zweite'],
@@ -82,6 +81,7 @@ LEAGUE_NAMES = {
 
 class Competition(typing.NamedTuple):
     """A football competition."""
+
     region: str
     name: str
 
@@ -123,7 +123,7 @@ class Match(typing.NamedTuple):
     """A football match."""
 
     competition: Competition
-    date: datetime.date    # Local date.
+    date: datetime.date  # Local date.
     season: Season
     home: str
     away: str
@@ -166,7 +166,7 @@ class Fixture(typing.NamedTuple):
     """A scheduled football match."""
 
     competition: Competition
-    date: datetime.date    # Local date.
+    date: datetime.date  # Local date.
     utc_time: datetime.datetime
     season: Season
     stage: str
@@ -176,8 +176,15 @@ class Fixture(typing.NamedTuple):
     @classmethod
     def from_match(cls, match):
         """Return a Fixture, given a match."""
-        return cls(match.competition, match.date, match.utc_time, match.season,
-                   match.stage, match.home, match.away)
+        return cls(
+            match.competition,
+            match.date,
+            match.utc_time,
+            match.season,
+            match.stage,
+            match.home,
+            match.away,
+        )
 
 
 def result(score):
@@ -201,15 +208,17 @@ def current_season():
     return Season(latest_season_start(), ends_following_year=True)
 
 
-def latest_season_start():
+def latest_season_start(before=None):
     """Return the year in which the latest season (summer-to-summer) starts.
 
     Switches to the next season with a few days in hand."""
 
-    now = datetools.canonical_now()
-    if (now.month, now.day) >= SEASON_START_DATE:
-        return now.year
-    return now.year - 1
+    if before is None:
+        before = datetools.canonical_now()
+
+    if (before.month, before.day) >= SEASON_START_DATE:
+        return before.year
+    return before.year - 1
 
 
 @functools.lru_cache()

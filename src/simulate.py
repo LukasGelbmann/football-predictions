@@ -20,6 +20,9 @@ def table(matches, fixtures, played, competition, predictor):
 def simulate_season(matches, fixtures, competition, predictor):
     """Return the matches after a simulated season."""
 
+    if competition.region == 'europe':
+        raise NotImplementedError("Don't know how to simulate this.")
+
     for match in matches:
         predictor.feed_match(match)
 
@@ -32,9 +35,14 @@ def simulate_season(matches, fixtures, competition, predictor):
         for fixture in todays_fixtures:
             probabilities = predictor.predict(fixture)
             score = sample_score(probabilities, category_to_score)
-            match = football.Match(fixture.competition, fixture.date,
-                                   fixture.season, fixture.home, fixture.away,
-                                   *score)
+            match = football.Match(
+                fixture.competition,
+                fixture.date,
+                fixture.season,
+                fixture.home,
+                fixture.away,
+                *score
+            )
             simulated.append(match)
             todays_matches.append(match)
         for match in todays_matches:
@@ -55,8 +63,9 @@ def get_category_to_score(matches):
     category_to_score = {}
     for category, counter in counters.items():
         total = sum(counter.values())
-        category_to_score[category] = {score: count / total
-                                       for score, count in counter.items()}
+        category_to_score[category] = {
+            score: count / total for score, count in counter.items()
+        }
 
     return category_to_score
 
