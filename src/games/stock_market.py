@@ -40,6 +40,15 @@ VALUES = {
         110,
         100,
     ],
+    football.Competition('europe', 'champions'): [
+        1000,
+        700,
+        *(2 * [500]),
+        *(4 * [300]),
+        *(8 * [200]),
+        *(8 * [130]),
+        *(8 * [100]),
+    ],
     football.Competition('germany', 'bundesliga'): [
         1000,
         800,
@@ -86,13 +95,16 @@ def buy_sets(competition, season):
         print(f"Bought {bought} sets.")
 
 
-def get_team_values(matches, fixtures, played, competition, get_predictor):
+def get_team_values(matches, fixtures, played, competition, season, get_predictor):
     """Return the average values per team."""
     random.seed(0)
     totals = collections.defaultdict(int)
     for i in range(NUM_SIMULATIONS):
         print(f"# Simulation {i} #", file=sys.stderr)
-        table = simulate.table(matches, fixtures, played, competition, get_predictor())
+        table = simulate.table(
+            matches, fixtures, played, competition, season, get_predictor()
+        )
+        simulate.print_ranking(table, file=sys.stderr)
         values = dict(zip(table, VALUES[competition]))
         for team, value in values.items():
             totals[team] += value
@@ -117,6 +129,8 @@ def print_team_values(team_values):
     def key(team):
         return -team_values[team], team
 
+    print("# Team values #")
+
     teams = sorted(team_values, key=key)
     for team in teams:
         print(f"{team_values[team]:4.0f} {team}")
@@ -126,14 +140,10 @@ def play():
     """Buy sets and update orders."""
 
     season = football.current_season()
-    competitions = [
-        football.Competition('england', 'premier'),
-        football.Competition('germany', 'bundesliga'),
-    ]
     matches = data.matches()
     get_predictor = predictors.strengths.Predictor
 
-    for competition in competitions:
+    for competition in prediction_zone.COMPETITIONS:
         buy_sets(competition, season)
         fixtures = list(data.season_fixtures(competition, season))
         played = [
@@ -142,7 +152,7 @@ def play():
             if (match.competition == competition and match.season == season)
         ]
         team_values = get_team_values(
-            matches, fixtures, played, competition, get_predictor
+            matches, fixtures, played, competition, season, get_predictor
         )
         print_team_values(team_values)
         update_orders(competition, season, team_values)

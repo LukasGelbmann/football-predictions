@@ -222,10 +222,17 @@ def latest_season_start(before=None):
 
 
 @functools.lru_cache()
-def league_size(competition):
+def is_cup(competition):
+    """Return True if the competition is a cup."""
+    return competition in {Competition('europe', 'champions')}
+
+
+@functools.lru_cache()
+def num_teams(competition):
     """Return a mapping from leagues to number of teams."""
     return {
         Competition('england', 'premier'): 20,
+        Competition('europe', 'champions'): 32,
         Competition('germany', 'bundesliga'): 18,
     }[competition]
 
@@ -235,5 +242,6 @@ def num_matches(competition):
     """Return a mapping from leagues to number of teams."""
     return {
         Competition('england', 'premier'): 38 * 10,
+        Competition('europe', 'champions'): 6 * 2 * 8 + 2 * 8 + 2 * 4 + 2 * 2 + 1,
         Competition('germany', 'bundesliga'): 34 * 9,
     }[competition]
