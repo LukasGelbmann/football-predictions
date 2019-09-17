@@ -148,6 +148,11 @@ def date_from_utc_time(utc_time, region):
     return local_time.date()
 
 
+def is_soon(date, timeframe):
+    """Return True if the given date is within the given timeframe in UTC."""
+    return date - canonical_now().date() <= timeframe
+
+
 @functools.lru_cache()
 def canonical_now():
     """Return a datetime object standing for now in UTC, unchanging."""

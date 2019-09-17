@@ -13,10 +13,13 @@ import paths
 
 BASE_URL = 'https://prediction.zone/api'
 
-COMPETITIONS = {
+COMPETITION_NAMES = {
     football.Competition('england', 'premier'): 'premierleague',
+    football.Competition('europe', 'champions'): 'championsleague',
     football.Competition('germany', 'bundesliga'): 'bundesliga',
 }
+
+COMPETITIONS = sorted(COMPETITION_NAMES)
 
 
 def buy(competition, season, team, price, limit):
@@ -154,7 +157,7 @@ def post(endpoint, data):
 
 def season_name(competition, season):
     """Return the canonical string for a season."""
-    name = COMPETITIONS[competition]
+    name = COMPETITION_NAMES[competition]
     return f'{name}{season.start % 100 :02}{season.end % 100 :02}'
 
 

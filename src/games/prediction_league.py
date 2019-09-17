@@ -2,14 +2,24 @@
 
 
 import collections
+import datetime
 import random
 import sys
 
 import data
+import datetools
 import football
 import predictors
 import probtools
 from games import prediction_zone
+
+
+TIMEFRAME = datetime.timedelta(days=10)
+
+LEAGUES = [
+    football.Competition('england', 'premier'),
+    football.Competition('germany', 'bundesliga'),
+]
 
 
 def make_predictions(matches, fixtures, competition, predictor):
@@ -34,6 +44,7 @@ def make_predictions(matches, fixtures, competition, predictor):
             file=sys.stderr,
         )
         prediction_zone.predict_result(fixture, predicted_result)
+    print()
 
 
 def get_result_probabilities(probabilities):
@@ -60,15 +71,14 @@ def get_prediction(result_probabilities, fixture, league_size):
 def play():
     """Make the next predictions."""
 
-    pairs = [
-        (football.Competition('england', 'premier'), 10),
-        (football.Competition('germany', 'bundesliga'), 9),
-    ]
     matches = data.matches()
-
-    for competition, num_predictions in pairs:
+    for competition in LEAGUES:
         fixtures = list(data.competition_fixtures(competition))
-        next_fixtures = fixtures[:num_predictions]
+        next_fixtures = [
+            fixture
+            for fixture in fixtures
+            if datetools.is_soon(fixture.date, TIMEFRAME)
+        ]
         predictor = predictors.strengths.Predictor()
         make_predictions(matches, next_fixtures, competition, predictor)
 

@@ -146,7 +146,8 @@ def consolidate_single(replicas, data_type):
 def sort_key(item):
     """Return the sorting key for a match or fixture."""
     utc_time = item.utc_time or datetime.datetime.max
-    return item.date, utc_time, item.home, item.away
+    stage = item.stage or ''
+    return item.date, utc_time, stage, item.home, item.away
 
 
 def row_from_match(match):

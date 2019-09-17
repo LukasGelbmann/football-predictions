@@ -37,9 +37,9 @@ class Predictor(base.Predictor):
         category = prediction.category(match)
         self.category_counts[match.competition][category] += 1
 
-    def predict(self, fixture):
+    def predict(self, fixture, verbose=False):
         region = fixture.competition.region
-        self.update_cache(region, fixture.date)
+        self.update_cache(region, fixture.date, verbose)
         strengths = self.strengths_caches[region]
         strength_diff_naive = strengths[fixture.home] - strengths[fixture.away]
         strength_diff = strength_diff_naive + HOME_ADVANTAGE
@@ -61,7 +61,7 @@ class Predictor(base.Predictor):
             probabilities[category] = result_probabilities[result] * factor
         return probabilities
 
-    def update_cache(self, region, target):
+    def update_cache(self, region, target, verbose):
         """Update the strengths cache for a region."""
 
         if region in self.valid_caches:
@@ -80,7 +80,8 @@ class Predictor(base.Predictor):
             strengths = collections.defaultdict(float)
             iterations = ITERATIONS
 
-        # print(target, region, file=sys.stderr)
+        if verbose:
+            print(target, region, file=sys.stderr)
 
         for _ in iterations:
             new_strengths = strengths.copy()
