@@ -103,23 +103,26 @@ def get_fields(competition):
 def match_from_fields(fields, competition, season):
     """Return the corresponding match."""
 
-    _, _, home, away, home_goals_str, away_goals_str = fields
-    kwargs = get_kwargs(fields, competition, season)
+    datetime_str, _, home, away, home_goals_str, away_goals_str = fields
 
     if not home_goals_str or not away_goals_str:
         if home_goals_str or away_goals_str:
             print(
-                f"Only half a score: {kwargs['date']}, {home} - {away}", file=sys.stderr
+                f"Only half a score: {datetime_str}, {home} - {away}", file=sys.stderr
             )
         return None
 
+    kwargs = get_kwargs(fields, competition, season)
     return football.Match(competition, **kwargs)
 
 
 def fixture_from_fields(fields, competition, season):
     """Return the corresponding fixture."""
 
-    *_, home_goals_str, away_goals_str = fields
+    datetime_str, *_, home_goals_str, away_goals_str = fields
+
+    if not datetime_str:
+        return None
 
     if home_goals_str or away_goals_str:
         return None

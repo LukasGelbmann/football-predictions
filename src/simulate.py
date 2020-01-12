@@ -244,7 +244,7 @@ def sample_score(probabilities, category_to_score):
     return random.choices(list(scores), scores.values())[0]
 
 
-def ko_ranking(matches, competition, exp_matches=None, exp_teams=None, cl_rules=True):
+def ko_ranking(matches, competition, exp_matches=None, exp_teams=None):
     """Return a ranking of teams in a cup competition."""
 
     if exp_matches is None:
@@ -285,8 +285,7 @@ def ko_ranking(matches, competition, exp_matches=None, exp_teams=None, cl_rules=
             ranking.append(winner)
             ranking.append(loser)
         else:
-            losers = list(stage_teams - previous_stage_teams)
-            random.shuffle(losers)
+            losers = sorted(stage_teams - previous_stage_teams)
             ranking.extend(losers)
 
         previous_stage_teams = stage_teams
@@ -299,8 +298,8 @@ def ko_ranking(matches, competition, exp_matches=None, exp_teams=None, cl_rules=
         thirds.append(third)
         fourths.append(fourth)
 
-    random.shuffle(thirds)
-    random.shuffle(fourths)
+    thirds.sort()
+    fourths.sort()
 
     ranking.extend(thirds)
     ranking.extend(fourths)
