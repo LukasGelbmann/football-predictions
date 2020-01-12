@@ -102,7 +102,7 @@ def consolidate_fixtures(competition, sources_iter):
             key = fixture.date, fixture.home, fixture.away
             fixtures[key].append(fixture)
 
-    if not fixtures:
+    if not fixtures and not path.exists():
         return
 
     fixtures_iter = (

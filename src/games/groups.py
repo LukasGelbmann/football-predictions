@@ -9,7 +9,6 @@ import data
 import football
 import predictors
 import simulate
-from games import prediction_zone
 
 
 NUM_SIMULATIONS = 1000
@@ -21,7 +20,9 @@ def get_team_chances(matches, fixtures, played, competition, season, get_predict
     """Return the counts per position per team."""
     random.seed(0)
     # Group -> team -> position -> count
-    counters = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
+    counters = collections.defaultdict(
+        lambda: collections.defaultdict(collections.Counter)
+    )
     for i in range(NUM_SIMULATIONS):
         print(f"# Simulation {i} #", file=sys.stderr)
         simulated = simulate.simulate_season(

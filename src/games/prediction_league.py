@@ -14,7 +14,7 @@ import probtools
 from games import prediction_zone
 
 
-TIMEFRAME = datetime.timedelta(days=10)
+TIMEFRAME = datetime.timedelta(days=21)
 
 LEAGUES = [
     football.Competition('england', 'premier'),

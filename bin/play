@@ -2,10 +2,10 @@
 
 set -o errexit
 
-REAL_PATH=$(
+REAL_PATH="$(
     readlink -f -- "$0" 2>/dev/null ||
     python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]))" "$0"
-)
+)"
 SRC_PATH="$(dirname -- "$REAL_PATH")/../src"
 
 # Change to the source directory because otherwise PyPy can't always find files
@@ -13,6 +13,6 @@ SRC_PATH="$(dirname -- "$REAL_PATH")/../src"
 cd -- "$SRC_PATH"
 
 . ./fastest_python.sh
-set_python
+PYTHON=$(fastest_python)
 
 "$PYTHON" play.py "$@"

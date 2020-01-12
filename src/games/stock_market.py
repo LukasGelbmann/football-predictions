@@ -2,6 +2,7 @@
 
 
 import collections
+import math
 import random
 import sys
 
@@ -99,7 +100,8 @@ def get_team_values(matches, fixtures, played, competition, season, get_predicto
     """Return the average values per team."""
     random.seed(0)
     totals = collections.defaultdict(int)
-    for i in range(NUM_SIMULATIONS):
+    mins = collections.defaultdict(lambda: math.inf)
+    for i in range(1, NUM_SIMULATIONS+1):
         print(f"# Simulation {i} #", file=sys.stderr)
         table = simulate.table(
             matches, fixtures, played, competition, season, get_predictor()
@@ -108,28 +110,39 @@ def get_team_values(matches, fixtures, played, competition, season, get_predicto
         values = dict(zip(table, VALUES[competition]))
         for team, value in values.items():
             totals[team] += value
-    return {team: total / NUM_SIMULATIONS for team, total in totals.items()}
+            mins[team] = min(mins[team], value)
+    return mins, {team: total / NUM_SIMULATIONS for team, total in totals.items()}
 
 
-def update_orders(competition, season, team_values):
+def update_orders(competition, season, team_values, mins):
     """Update orders on Prediction Zone."""
     min_value = min(VALUES[competition])
     max_value = max(VALUES[competition])
     for team, value in team_values.items():
         margin = ((value - min_value) * (max_value - value)) ** 0.8 / 210
+
         low = round(value - margin)
+        if low < mins[team] and value >= mins[team] + 7:
+            low = mins[team] + 1
+        if low >= max_value:
+            low = max_value - 1
+
         high = round(value + margin)
+        if high <= min_value:
+            high = min_value + 1
+
+        print(f"{team}: buy {low}, sell {high}")
         prediction_zone.buy(competition, season, team, low, ORDER_SIZE)
         prediction_zone.sell(competition, season, team, high, ORDER_SIZE)
 
 
-def print_team_values(team_values):
+def print_team_values(team_values, title='values'):
     """Print the recommended overall prediction."""
 
     def key(team):
         return -team_values[team], team
 
-    print("# Team values #")
+    print(f"# Team {title} #")
 
     teams = sorted(team_values, key=key)
     for team in teams:
@@ -151,11 +164,12 @@ def play():
             for match in matches
             if (match.competition == competition and match.season == season)
         ]
-        team_values = get_team_values(
+        mins, team_values = get_team_values(
             matches, fixtures, played, competition, season, get_predictor
         )
         print_team_values(team_values)
-        update_orders(competition, season, team_values)
+        print_team_values(mins, 'minimum values')
+        update_orders(competition, season, team_values, mins)
 
 
 def main():

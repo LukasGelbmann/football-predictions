@@ -115,7 +115,7 @@ def post_to(endpoint, data=None):
     try:
         response = post(endpoint, data)
     except urllib.error.HTTPError:
-        print("Couldn't reach endpoint", endpoint, file=sys.stderr)
+        print(f"Couldn't reach endpoint {endpoint} (data={data})", file=sys.stderr)
         return
 
     with response:

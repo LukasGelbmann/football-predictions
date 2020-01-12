@@ -13,7 +13,7 @@ import simulate
 from games import prediction_zone
 
 
-TIMEFRAME = datetime.timedelta(days=10)
+TIMEFRAME = datetime.timedelta(days=21)
 
 
 def make_predictions(matches, fixtures, predictor):
